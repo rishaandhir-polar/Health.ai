@@ -420,6 +420,25 @@ function safeJSON(key, fallback) {
     }
 }
 
+// Helper to safely save to localStorage (important for mobile browsers)
+function safeSave(key, value) {
+    try {
+        const stringValue = typeof value === 'string' ? value : JSON.stringify(value);
+        localStorage.setItem(key, stringValue);
+
+        // Verify save (mobile Safari can fail silently)
+        const saved = localStorage.getItem(key);
+        if (!saved) {
+            console.error('localStorage save failed for', key, '- retrying...');
+            localStorage.setItem(key, stringValue);
+        }
+        return true;
+    } catch (e) {
+        console.error('Failed to save to localStorage:', key, e);
+        return false;
+    }
+}
+
 const state = {
     theme: localStorage.getItem('health_theme') || 'theme-light',
     history: safeJSON('health_history', []),
@@ -1413,6 +1432,16 @@ function finishMeditation() {
 }
 
 function init() {
+    // Check if localStorage is available (important for mobile/private browsing)
+    try {
+        const test = '__storage_test__';
+        localStorage.setItem(test, test);
+        localStorage.removeItem(test);
+    } catch (e) {
+        alert('⚠️ Warning: Your browser storage is disabled or full. Your data will not be saved. Please check your browser settings or free up space.');
+        console.error('localStorage not available:', e);
+    }
+
     applyTheme(state.theme);
     checkAchievements();
 
@@ -1451,6 +1480,9 @@ function init() {
                 const prefix = currentVal.length > 0 && !currentVal.endsWith(' ') ? ' ' : '';
                 textarea.value = currentVal + prefix + textToAdd + ' ';
                 // Removed textarea.focus() to prevent auto-scroll - better UX
+
+                // Toggle selected state for visual feedback
+                chip.classList.add('selected');
             }
         }
 
@@ -1495,15 +1527,28 @@ function init() {
                 setTimeout(() => showStreakCelebration(streak), 1000);
             }
 
-            localStorage.setItem('health_history', JSON.stringify(state.history));
+            // Save to localStorage with error handling (important for mobile browsers)
+            if (!safeSave('health_history', state.history)) {
+                alert('⚠️ Warning: Your entry may not be saved. Please check your browser storage settings.');
+            }
+
             checkAchievements(result);
 
             // Success sound if doing well
             if (result.overall >= 70 && window.soundEngine) window.soundEngine.playSuccess();
 
+            // Clear selected chips after submission
+            document.querySelectorAll('.chip.selected').forEach(chip => chip.classList.remove('selected'));
+
             render('dashboard', result);
         }
-        if (e.target.id === 'btn-home') render('entry');
+        if (e.target.id === 'btn-home') {
+            // Clear selected chips when going back to entry
+            setTimeout(() => {
+                document.querySelectorAll('.chip.selected').forEach(chip => chip.classList.remove('selected'));
+            }, 100);
+            render('entry');
+        }
         if (e.target.id === 'btn-history') render('history');
         if (e.target.id === 'btn-monthly') render('monthly'); // NEW
         if (e.target.closest('#btn-reset-streak')) {

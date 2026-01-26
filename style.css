@@ -432,6 +432,20 @@ textarea:focus {
     transform: scale(0.95);
 }
 
+/* Selected state - shows which chips have been clicked */
+.chip.selected {
+    background-color: var(--accent);
+    color: white;
+    border-color: var(--accent);
+    font-weight: 600;
+}
+
+.chip.negative.selected {
+    background-color: var(--danger);
+    border-color: var(--danger);
+    color: white;
+}
+
 .chip.negative:hover {
     border-color: var(--danger);
     color: var(--danger);
@@ -562,9 +576,11 @@ body.theme-tan .screen.active.meditation-theme {
         transform: translate(-50%, -50%) scale(0);
         opacity: 0;
     }
+
     50% {
         transform: translate(-50%, -50%) scale(1.1);
     }
+
     100% {
         transform: translate(-50%, -50%) scale(1);
         opacity: 1;
@@ -599,9 +615,11 @@ body.theme-tan .screen.active.meditation-theme {
         transform: translate(-50%, -50%) scale(0) rotate(-180deg);
         opacity: 0;
     }
+
     50% {
         transform: translate(-50%, -50%) scale(1.2) rotate(10deg);
     }
+
     100% {
         transform: translate(-50%, -50%) scale(1) rotate(0deg);
         opacity: 1;
@@ -636,15 +654,20 @@ body.theme-tan .screen.active.meditation-theme {
 }
 
 @keyframes streakPulse {
-    0%, 100% {
+
+    0%,
+    100% {
         transform: translate(-50%, -50%) scale(1);
     }
+
     25% {
         transform: translate(-50%, -50%) scale(1.1);
     }
+
     50% {
         transform: translate(-50%, -50%) scale(0.95);
     }
+
     75% {
         transform: translate(-50%, -50%) scale(1.05);
     }
