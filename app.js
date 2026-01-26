@@ -1450,7 +1450,7 @@ function init() {
                 // Add space if needed
                 const prefix = currentVal.length > 0 && !currentVal.endsWith(' ') ? ' ' : '';
                 textarea.value = currentVal + prefix + textToAdd + ' ';
-                textarea.focus();
+                // Removed textarea.focus() to prevent auto-scroll - better UX
             }
         }
 
