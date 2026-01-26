@@ -1475,14 +1475,29 @@ function init() {
             const textarea = document.getElementById('journal-input');
 
             if (textarea) {
-                const currentVal = textarea.value;
-                // Add space if needed
-                const prefix = currentVal.length > 0 && !currentVal.endsWith(' ') ? ' ' : '';
-                textarea.value = currentVal + prefix + textToAdd + ' ';
-                // Removed textarea.focus() to prevent auto-scroll - better UX
+                // Check if chip is already selected
+                if (chip.classList.contains('selected')) {
+                    // Unselect: remove the chip and its text
+                    chip.classList.remove('selected');
 
-                // Toggle selected state for visual feedback
-                chip.classList.add('selected');
+                    // Remove the text from textarea
+                    const currentVal = textarea.value;
+                    // Remove the exact text (with space variations)
+                    let newVal = currentVal.replace(textToAdd + ' ', '');
+                    if (newVal === currentVal) {
+                        newVal = currentVal.replace(' ' + textToAdd, '');
+                    }
+                    if (newVal === currentVal) {
+                        newVal = currentVal.replace(textToAdd, '');
+                    }
+                    textarea.value = newVal.trim() + (newVal.trim() ? ' ' : '');
+                } else {
+                    // Select: add the chip and its text
+                    const currentVal = textarea.value;
+                    const prefix = currentVal.length > 0 && !currentVal.endsWith(' ') ? ' ' : '';
+                    textarea.value = currentVal + prefix + textToAdd + ' ';
+                    chip.classList.add('selected');
+                }
             }
         }
 
