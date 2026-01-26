@@ -502,3 +502,150 @@ body.theme-tan .screen.active.meditation-theme {
     background: linear-gradient(135deg, var(--accent), var(--success)) !important;
     /* Same gradient as breathing circle - adapts to each theme */
 }
+
+/* --- NEW: CELEBRATION ANIMATIONS --- */
+
+/* Confetti */
+.confetti {
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    top: -10px;
+    z-index: 9999;
+    animation: confetti-fall linear forwards;
+}
+
+@keyframes confetti-fall {
+    to {
+        transform: translateY(100vh) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+/* Achievement Popup */
+.achievement-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10000;
+    background: var(--bg-card);
+    border: 2px solid var(--accent);
+    border-radius: var(--radius-lg);
+    padding: 32px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: popIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    max-width: 90%;
+    width: 400px;
+    text-align: center;
+    transition: opacity 0.5s;
+}
+
+.achievement-content h2 {
+    color: var(--accent);
+    margin: 16px 0 8px 0;
+}
+
+.achievement-content h3 {
+    color: var(--text-main);
+    margin: 8px 0;
+}
+
+.achievement-content p {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin: 0;
+}
+
+@keyframes popIn {
+    0% {
+        transform: translate(-50%, -50%) scale(0);
+        opacity: 0;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.1);
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+    }
+}
+
+/* Level Up Popup */
+.level-up-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10000;
+    background: linear-gradient(135deg, var(--accent), var(--success));
+    border-radius: var(--radius-lg);
+    padding: 48px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    animation: levelUpBounce 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    text-align: center;
+    color: white;
+    transition: opacity 0.5s;
+}
+
+.level-up-content h2 {
+    font-size: 48px;
+    margin: 16px 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes levelUpBounce {
+    0% {
+        transform: translate(-50%, -50%) scale(0) rotate(-180deg);
+        opacity: 0;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.2) rotate(10deg);
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1) rotate(0deg);
+        opacity: 1;
+    }
+}
+
+/* Streak Popup */
+.streak-popup {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10000;
+    background: var(--bg-card);
+    border: 3px solid #fca5a5;
+    border-radius: var(--radius-lg);
+    padding: 40px;
+    box-shadow: 0 10px 40px rgba(252, 165, 165, 0.4);
+    animation: streakPulse 0.6s ease-out;
+    text-align: center;
+    transition: opacity 0.5s;
+}
+
+.streak-content h2 {
+    color: #fca5a5;
+    margin: 16px 0 8px 0;
+}
+
+.streak-content p {
+    color: var(--text-muted);
+    margin: 0;
+}
+
+@keyframes streakPulse {
+    0%, 100% {
+        transform: translate(-50%, -50%) scale(1);
+    }
+    25% {
+        transform: translate(-50%, -50%) scale(1.1);
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(0.95);
+    }
+    75% {
+        transform: translate(-50%, -50%) scale(1.05);
+    }
+}

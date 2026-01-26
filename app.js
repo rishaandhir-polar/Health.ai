@@ -428,34 +428,81 @@ const state = {
     meditationActive: false,
     meditationPhase: 'ready', // ready, inhale, hold, exhale
     meditationTime: 60, // seconds
-    unlockedBadges: safeJSON('health_badges', [])
+    unlockedBadges: safeJSON('health_badges', []),
+    goals: safeJSON('health_goals', []), // NEW: Weekly goals
+    meditationDates: safeJSON('health_meditation_dates', []) // NEW: Track meditation days for Zen Streak
 };
 
 let meditationInterval = null;
 let breathingInterval = null;
 
 // --- CONFIG ---
+// SMART CHIPS - Organized by Category
 const SMART_CHIPS = [
-    { label: "Drank Water", icon: "fa-glass-water", text: "Drank water 💧" },
-    { label: "Ate Salad", icon: "fa-leaf", text: "Ate a healthy salad 🥗" },
-    { label: "Run/Walk", icon: "fa-person-running", text: "Went for a run/walk 🏃" },
-    { label: "Gym", icon: "fa-dumbbell", text: "Hit the gym 💪" },
-    { label: "Good Sleep", icon: "fa-bed", text: "Slept 8 hours 😴" },
-    { label: "Read Book", icon: "fa-book", text: "Read a book 📖" },
-    { label: "No Phone", icon: "fa-mobile-screen", text: "Stayed off my phone 📵" },
-    { label: "Fruit", icon: "fa-apple-whole", text: "Ate fruit 🍎" },
-    { label: "Meditated", icon: "fa-spa", text: "Meditated 🧘" },
-    { label: "Grateful", icon: "fa-heart", text: "Feeling grateful ❤️" }
+    // FOOD & NUTRITION
+    { label: "Drank Water", icon: "fa-glass-water", text: "Drank water 💧", category: "food" },
+    { label: "Ate Salad", icon: "fa-leaf", text: "Ate a healthy salad 🥗", category: "food" },
+    { label: "Fruit", icon: "fa-apple-whole", text: "Ate fruit 🍎", category: "food" },
+    { label: "Home Cooked", icon: "fa-utensils", text: "Made a home-cooked meal 🍳", category: "food" },
+    { label: "Protein", icon: "fa-drumstick-bite", text: "Ate protein (chicken/fish/eggs) 🍗", category: "food" },
+    { label: "Breakfast", icon: "fa-mug-saucer", text: "Had a healthy breakfast ☕", category: "food" },
+
+    // EXERCISE & ACTIVITY
+    { label: "Run/Walk", icon: "fa-person-running", text: "Went for a run/walk 🏃", category: "active" },
+    { label: "Gym", icon: "fa-dumbbell", text: "Hit the gym 💪", category: "active" },
+    { label: "Yoga", icon: "fa-spa", text: "Did yoga 🧘", category: "active" },
+    { label: "Sports", icon: "fa-basketball", text: "Played sports 🏀", category: "active" },
+    { label: "Bike Ride", icon: "fa-bicycle", text: "Went for a bike ride 🚴", category: "active" },
+    { label: "Stretching", icon: "fa-person-walking", text: "Did stretching exercises 🤸", category: "active" },
+
+    // SLEEP & REST
+    { label: "Good Sleep", icon: "fa-bed", text: "Slept 8 hours 😴", category: "sleep" },
+    { label: "Early Bedtime", icon: "fa-moon", text: "Went to bed early 🌙", category: "sleep" },
+    { label: "Nap", icon: "fa-bed-pulse", text: "Took a refreshing nap 💤", category: "sleep" },
+
+    // LEARNING & PRODUCTIVITY
+    { label: "Read Book", icon: "fa-book", text: "Read a book 📖", category: "knowledge" },
+    { label: "Studied", icon: "fa-graduation-cap", text: "Studied/did homework 📚", category: "knowledge" },
+    { label: "Learned Skill", icon: "fa-lightbulb", text: "Learned something new 💡", category: "knowledge" },
+    { label: "Productive Work", icon: "fa-laptop", text: "Had a productive work session 💻", category: "knowledge" },
+    { label: "Creative", icon: "fa-palette", text: "Did something creative (art/music) 🎨", category: "knowledge" },
+
+    // MINDSET & SOCIAL
+    { label: "Meditated", icon: "fa-om", text: "Meditated 🧘", category: "mindset" },
+    { label: "Grateful", icon: "fa-heart", text: "Feeling grateful ❤️", category: "mindset" },
+    { label: "Friends", icon: "fa-user-group", text: "Spent time with friends 👥", category: "mindset" },
+    { label: "Family Time", icon: "fa-house-heart", text: "Quality time with family 👨‍👩‍👧", category: "mindset" },
+    { label: "Helped Someone", icon: "fa-hand-holding-heart", text: "Helped someone today 🤝", category: "mindset" },
+    { label: "Journaled", icon: "fa-pen", text: "Wrote in my journal ✍️", category: "mindset" },
+
+    // SCREEN TIME
+    { label: "No Phone", icon: "fa-mobile-screen-button", text: "Stayed off my phone 📵", category: "screen" },
+    { label: "Screen Break", icon: "fa-eye-slash", text: "Took screen breaks 👀", category: "screen" },
+    { label: "Outside Time", icon: "fa-tree", text: "Spent time outside 🌳", category: "screen" }
 ];
 
 const NEGATIVE_CHIPS = [
-    { label: "Junk Food", icon: "fa-burger", text: "Ate junk food 🍔" },
-    { label: "Soda/Sugar", icon: "fa-candy-cane", text: "Drank soda / ate sweets 🍬" },
-    { label: "Too Much TV", icon: "fa-tv", text: "Watched too much TV 📺" },
-    { label: "Phone Scroll", icon: "fa-mobile", text: "Doomscrolled on phone 📱" },
-    { label: "Lazy", icon: "fa-couch", text: "Laid on couch all day 🛋️" },
-    { label: "Bad Sleep", icon: "fa-face-dizzy", text: "Slept poorly 😫" },
-    { label: "Up Late", icon: "fa-moon", text: "Stayed up way too late 🦉" }
+    // FOOD
+    { label: "Junk Food", icon: "fa-burger", text: "Ate junk food 🍔", category: "food" },
+    { label: "Soda/Sugar", icon: "fa-candy-cane", text: "Drank soda / ate sweets 🍬", category: "food" },
+    { label: "Skipped Meal", icon: "fa-ban", text: "Skipped a meal 🚫", category: "food" },
+
+    // SCREEN TIME
+    { label: "Too Much TV", icon: "fa-tv", text: "Watched too much TV 📺", category: "screen" },
+    { label: "Phone Scroll", icon: "fa-mobile", text: "Doomscrolled on phone 📱", category: "screen" },
+    { label: "Video Games", icon: "fa-gamepad", text: "Played video games all day 🎮", category: "screen" },
+
+    // ACTIVITY
+    { label: "Lazy", icon: "fa-couch", text: "Laid on couch all day 🛋️", category: "active" },
+    { label: "No Exercise", icon: "fa-person-walking-dashed-line-arrow-right", text: "Didn't exercise 😞", category: "active" },
+
+    // SLEEP
+    { label: "Bad Sleep", icon: "fa-face-dizzy", text: "Slept poorly 😫", category: "sleep" },
+    { label: "Up Late", icon: "fa-clock", text: "Stayed up way too late 🦉", category: "sleep" },
+
+    // MINDSET
+    { label: "Stressed", icon: "fa-face-frown", text: "Felt stressed/anxious 😰", category: "mindset" },
+    { label: "Procrastinated", icon: "fa-hourglass-end", text: "Procrastinated all day ⏰", category: "mindset" }
 ];
 
 const ACHIEVEMENTS = [
@@ -464,7 +511,18 @@ const ACHIEVEMENTS = [
     { id: 'streak_7', icon: 'fa-fire-flame-curved', title: 'Unstoppable', desc: 'Reach a 7-day streak.' },
     { id: 'hydration_hero', icon: 'fa-glass-water', title: 'Hydration Hero', desc: 'Score 5/5 on Hydration.' },
     { id: 'zen_master', icon: 'fa-spa', title: 'Zen Master', desc: 'Complete a meditation session.' },
-    { id: 'bookworm', icon: 'fa-book-open', title: 'Bookworm', desc: 'Score 5/5 on Knowledge.' }
+    { id: 'bookworm', icon: 'fa-book-open', title: 'Bookworm', desc: 'Score 5/5 on Knowledge.' },
+    // NEW ACHIEVEMENTS
+    { id: 'early_bird', icon: 'fa-sun', title: 'Early Bird', desc: 'Log before 9am.' },
+    { id: 'night_owl', icon: 'fa-moon', title: 'Night Owl', desc: 'Log after 10pm.' },
+    { id: 'balanced', icon: 'fa-scale-balanced', title: 'Balanced', desc: 'Score 4+ in all categories.' },
+    { id: 'perfectionist', icon: 'fa-star', title: 'Perfectionist', desc: 'Score 90+ overall.' },
+    { id: 'comeback_kid', icon: 'fa-arrow-rotate-left', title: 'Comeback Kid', desc: 'Return after 7+ day break.' },
+    { id: 'marathon', icon: 'fa-trophy', title: 'Marathon', desc: 'Reach a 30-day streak.' },
+    { id: 'hydration_king', icon: 'fa-droplet', title: 'Hydration King', desc: '7 days of 5/5 hydration.' },
+    { id: 'fitness_fanatic', icon: 'fa-dumbbell', title: 'Fitness Fanatic', desc: '7 days of 5/5 active.' },
+    { id: 'scholar', icon: 'fa-graduation-cap', title: 'Scholar', desc: '7 days of 5/5 knowledge.' },
+    { id: 'zen_streak', icon: 'fa-om', title: 'Zen Streak', desc: 'Meditate 3 days in a row.' }
 ];
 
 const app = document.getElementById('app');
@@ -484,24 +542,262 @@ function checkAchievements(result = null) {
     const streak = calculateStreak();
     if (streak >= 3 && !currentBadges.has('streak_3')) newBadges.push('streak_3');
     if (streak >= 7 && !currentBadges.has('streak_7')) newBadges.push('streak_7');
+    if (streak >= 30 && !currentBadges.has('marathon')) newBadges.push('marathon'); // NEW
 
     // 3. Result based (runs only if we just analyzed)
     if (result) {
         if (result.categories.hydration >= 5 && !currentBadges.has('hydration_hero')) newBadges.push('hydration_hero');
         if (result.categories.knowledge >= 5 && !currentBadges.has('bookworm')) newBadges.push('bookworm');
+
+        // NEW: Perfectionist
+        if (result.overall >= 90 && !currentBadges.has('perfectionist')) newBadges.push('perfectionist');
+
+        // NEW: Balanced
+        const cats = result.categories;
+        if (cats.food >= 4 && cats.hydration >= 4 && cats.screen >= 4 &&
+            cats.sleep >= 4 && cats.active >= 4 && cats.mindset >= 4 &&
+            cats.knowledge >= 4 && !currentBadges.has('balanced')) {
+            newBadges.push('balanced');
+        }
+
+        // NEW: Early Bird / Night Owl (check current time)
+        const now = new Date();
+        const hour = now.getHours();
+        if (hour < 9 && !currentBadges.has('early_bird')) newBadges.push('early_bird');
+        if (hour >= 22 && !currentBadges.has('night_owl')) newBadges.push('night_owl');
     }
 
-    // 4. Meditation (handled in finishMeditation, but could check history flags if we tracked them)
-    // For now, we'll manually unlock 'zen_master' in finishMeditation
+    // 4. NEW: Comeback Kid (return after 7+ day break)
+    if (state.history.length >= 2 && !currentBadges.has('comeback_kid')) {
+        const sortedHistory = [...state.history].sort((a, b) => new Date(b.date) - new Date(a.date));
+        if (sortedHistory.length >= 2) {
+            const lastEntry = new Date(sortedHistory[0].date);
+            const secondLastEntry = new Date(sortedHistory[1].date);
+            const daysDiff = Math.floor((lastEntry - secondLastEntry) / (1000 * 60 * 60 * 24));
+            if (daysDiff >= 7) newBadges.push('comeback_kid');
+        }
+    }
+
+    // 5. NEW: 7-day category streaks (Hydration King, Fitness Fanatic, Scholar)
+    if (!currentBadges.has('hydration_king') || !currentBadges.has('fitness_fanatic') || !currentBadges.has('scholar')) {
+        const last7Days = state.history.slice(-7);
+        if (last7Days.length >= 7) {
+            // Hydration King
+            if (!currentBadges.has('hydration_king') && last7Days.every(e => e.result.categories.hydration >= 5)) {
+                newBadges.push('hydration_king');
+            }
+            // Fitness Fanatic
+            if (!currentBadges.has('fitness_fanatic') && last7Days.every(e => e.result.categories.active >= 5)) {
+                newBadges.push('fitness_fanatic');
+            }
+            // Scholar
+            if (!currentBadges.has('scholar') && last7Days.every(e => e.result.categories.knowledge >= 5)) {
+                newBadges.push('scholar');
+            }
+        }
+    }
+
+    // 6. NEW: Zen Streak (meditate 3 days in a row)
+    if (!currentBadges.has('zen_streak') && state.meditationDates.length >= 3) {
+        const sortedDates = [...state.meditationDates].sort((a, b) => new Date(b) - new Date(a));
+        let consecutiveDays = 1;
+        for (let i = 0; i < sortedDates.length - 1; i++) {
+            const current = new Date(sortedDates[i]).setHours(0, 0, 0, 0);
+            const next = new Date(sortedDates[i + 1]).setHours(0, 0, 0, 0);
+            const dayDiff = (current - next) / (1000 * 60 * 60 * 24);
+            if (dayDiff === 1) {
+                consecutiveDays++;
+                if (consecutiveDays >= 3) {
+                    newBadges.push('zen_streak');
+                    break;
+                }
+            } else {
+                break;
+            }
+        }
+    }
 
     if (newBadges.length > 0) {
         state.unlockedBadges = [...state.unlockedBadges, ...newBadges];
         localStorage.setItem('health_badges', JSON.stringify(state.unlockedBadges));
-        alert(`🏆 Achievement Unlocked: ${ACHIEVEMENTS.find(a => a.id === newBadges[0]).title}!`);
+
+        // Show achievement with confetti animation
+        newBadges.forEach(badgeId => {
+            const achievement = ACHIEVEMENTS.find(a => a.id === badgeId);
+            if (achievement) {
+                showAchievementUnlock(achievement);
+            }
+        });
     }
 }
 
+// --- NEW: CELEBRATION ANIMATIONS ---
+
+function showAchievementUnlock(achievement) {
+    // Play success sound
+    if (window.soundEngine) window.soundEngine.playSuccess();
+
+    // Create confetti
+    createConfetti();
+
+    // Show achievement popup
+    const popup = document.createElement('div');
+    popup.className = 'achievement-popup';
+    popup.innerHTML = `
+        <div class="achievement-content">
+            <i class="fa-solid ${achievement.icon}" style="font-size: 48px; color: #fbbf24; margin-bottom: 16px;"></i>
+            <h2>Achievement Unlocked!</h2>
+            <h3>${achievement.title}</h3>
+            <p>${achievement.desc}</p>
+        </div>
+    `;
+    document.body.appendChild(popup);
+
+    // Remove after 4 seconds
+    setTimeout(() => {
+        popup.style.opacity = '0';
+        setTimeout(() => popup.remove(), 500);
+    }, 4000);
+}
+
+function createConfetti() {
+    const colors = ['#60a5fa', '#34d399', '#fbbf24', '#f87171', '#c4b5fd'];
+    const confettiCount = 50;
+
+    for (let i = 0; i < confettiCount; i++) {
+        const confetti = document.createElement('div');
+        confetti.className = 'confetti';
+        confetti.style.left = Math.random() * 100 + '%';
+        confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+        confetti.style.animationDelay = Math.random() * 0.5 + 's';
+        confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+        document.body.appendChild(confetti);
+
+        setTimeout(() => confetti.remove(), 4000);
+    }
+}
+
+function showLevelUpAnimation(newLevel) {
+    const popup = document.createElement('div');
+    popup.className = 'level-up-popup';
+    popup.innerHTML = `
+        <div class="level-up-content">
+            <h1 style="font-size: 72px; margin: 0;">⬆️</h1>
+            <h2>LEVEL UP!</h2>
+            <p style="font-size: 36px; font-weight: bold; color: var(--accent);">Level ${newLevel}</p>
+        </div>
+    `;
+    document.body.appendChild(popup);
+
+    createConfetti();
+    if (window.soundEngine) window.soundEngine.playSuccess();
+
+    setTimeout(() => {
+        popup.style.opacity = '0';
+        setTimeout(() => popup.remove(), 500);
+    }, 3000);
+}
+
+function showStreakCelebration(streak) {
+    if (streak === 3 || streak === 7 || streak === 14 || streak === 30) {
+        const popup = document.createElement('div');
+        popup.className = 'streak-popup';
+        popup.innerHTML = `
+            <div class="streak-content">
+                <h1 style="font-size: 72px; margin: 0;">🔥</h1>
+                <h2>${streak}-Day Streak!</h2>
+                <p>You're on fire! Keep it going!</p>
+            </div>
+        `;
+        document.body.appendChild(popup);
+
+        createConfetti();
+        if (window.soundEngine) window.soundEngine.playSuccess();
+
+        setTimeout(() => {
+            popup.style.opacity = '0';
+            setTimeout(() => popup.remove(), 500);
+        }, 3000);
+    }
+}
+
+// --- NEW: TREND ANALYSIS ---
+
+function calculateTrends() {
+    if (state.history.length < 2) return null;
+
+    const last7Days = state.history.slice(-7);
+    const previous7Days = state.history.slice(-14, -7);
+
+    if (last7Days.length < 2) return null;
+
+    const trends = {};
+    const categories = ['food', 'hydration', 'screen', 'sleep', 'active', 'mindset', 'knowledge'];
+
+    categories.forEach(cat => {
+        const recentAvg = last7Days.reduce((sum, e) => sum + (e.result.categories[cat] || 0), 0) / last7Days.length;
+        const previousAvg = previous7Days.length > 0
+            ? previous7Days.reduce((sum, e) => sum + (e.result.categories[cat] || 0), 0) / previous7Days.length
+            : recentAvg;
+
+        const change = recentAvg - previousAvg;
+        const changePercent = previousAvg > 0 ? ((change / previousAvg) * 100).toFixed(0) : 0;
+
+        trends[cat] = {
+            current: recentAvg.toFixed(1),
+            change: change.toFixed(1),
+            changePercent: changePercent,
+            direction: change > 0.3 ? 'up' : change < -0.3 ? 'down' : 'stable'
+        };
+    });
+
+    return trends;
+}
+
+// --- NEW: MONTHLY SUMMARY ---
+
+function getMonthlySummary() {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    const thisMonthEntries = state.history.filter(e => {
+        const entryDate = new Date(e.date);
+        return entryDate.getMonth() === currentMonth && entryDate.getFullYear() === currentYear;
+    });
+
+    if (thisMonthEntries.length === 0) return null;
+
+    const categories = ['food', 'hydration', 'screen', 'sleep', 'active', 'mindset', 'knowledge'];
+    const averages = {};
+
+    categories.forEach(cat => {
+        const avg = thisMonthEntries.reduce((sum, e) => sum + (e.result.categories[cat] || 0), 0) / thisMonthEntries.length;
+        averages[cat] = avg.toFixed(1);
+    });
+
+    const overallAvg = thisMonthEntries.reduce((sum, e) => sum + e.result.overall, 0) / thisMonthEntries.length;
+    const totalXP = thisMonthEntries.reduce((sum, e) => sum + (e.lockedXP || e.result.overall), 0);
+
+    const bestDay = thisMonthEntries.reduce((best, e) =>
+        (e.result.overall > best.result.overall) ? e : best
+    );
+    const worstDay = thisMonthEntries.reduce((worst, e) =>
+        (e.result.overall < worst.result.overall) ? e : worst
+    );
+
+    return {
+        daysLogged: thisMonthEntries.length,
+        overallAvg: overallAvg.toFixed(0),
+        totalXP: totalXP,
+        averages: averages,
+        bestDay: { date: bestDay.date, score: bestDay.result.overall },
+        worstDay: { date: worstDay.date, score: worstDay.result.overall }
+    };
+}
+
 function getMotivationalQuote(score) {
+
     if (score >= 90) return "You are CRUSHING it! Keep this momentum going! 🔥";
     if (score >= 70) return "Great job! You're making healthy choices. 💪";
     if (score >= 40) return "Good effort. Small steps every day lead to big changes. 🌱";
@@ -626,21 +922,83 @@ const ViewEntry = () => {
     const entryContent = `
         ${statusHeader}
         
-        <!-- Smart Chips (Always Visible) -->
-        <div class="chip-container">
-            ${SMART_CHIPS.map(chip => `
-                <div class="chip" data-text="${chip.text}">
-                    <i class="fa-solid ${chip.icon}"></i> ${chip.label}
-                </div>
-            `).join('')}
+        <!-- Smart Chips - Organized by Category -->
+        <div style="margin-bottom: 16px;">
+            <h4 style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; margin-bottom: 8px; font-weight: 600;">🍎 Food & Nutrition</h4>
+            <div class="chip-container">
+                ${SMART_CHIPS.filter(c => c.category === 'food').map(chip => `
+                    <div class="chip" data-text="${chip.text}">
+                        <i class="fa-solid ${chip.icon}"></i> ${chip.label}
+                    </div>
+                `).join('')}
+            </div>
         </div>
 
-        <div class="chip-container">
-            ${NEGATIVE_CHIPS.map(chip => `
-                <div class="chip negative" data-text="${chip.text}">
-                    <i class="fa-solid ${chip.icon}"></i> ${chip.label}
-                </div>
-            `).join('')}
+        <div style="margin-bottom: 16px;">
+            <h4 style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; margin-bottom: 8px; font-weight: 600;">💪 Exercise & Activity</h4>
+            <div class="chip-container">
+                ${SMART_CHIPS.filter(c => c.category === 'active').map(chip => `
+                    <div class="chip" data-text="${chip.text}">
+                        <i class="fa-solid ${chip.icon}"></i> ${chip.label}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+            <h4 style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; margin-bottom: 8px; font-weight: 600;">😴 Sleep & Rest</h4>
+            <div class="chip-container">
+                ${SMART_CHIPS.filter(c => c.category === 'sleep').map(chip => `
+                    <div class="chip" data-text="${chip.text}">
+                        <i class="fa-solid ${chip.icon}"></i> ${chip.label}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+            <h4 style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; margin-bottom: 8px; font-weight: 600;">📚 Learning & Productivity</h4>
+            <div class="chip-container">
+                ${SMART_CHIPS.filter(c => c.category === 'knowledge').map(chip => `
+                    <div class="chip" data-text="${chip.text}">
+                        <i class="fa-solid ${chip.icon}"></i> ${chip.label}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+            <h4 style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; margin-bottom: 8px; font-weight: 600;">❤️ Mindset & Social</h4>
+            <div class="chip-container">
+                ${SMART_CHIPS.filter(c => c.category === 'mindset').map(chip => `
+                    <div class="chip" data-text="${chip.text}">
+                        <i class="fa-solid ${chip.icon}"></i> ${chip.label}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+            <h4 style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; margin-bottom: 8px; font-weight: 600;">📵 Screen Time</h4>
+            <div class="chip-container">
+                ${SMART_CHIPS.filter(c => c.category === 'screen').map(chip => `
+                    <div class="chip" data-text="${chip.text}">
+                        <i class="fa-solid ${chip.icon}"></i> ${chip.label}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+
+        <!-- Negative Chips Section -->
+        <div style="margin-top: 24px; margin-bottom: 16px;">
+            <h4 style="color: var(--danger); font-size: 12px; text-transform: uppercase; margin-bottom: 8px; font-weight: 600;">⚠️ Things to Avoid</h4>
+            <div class="chip-container">
+                ${NEGATIVE_CHIPS.map(chip => `
+                    <div class="chip negative" data-text="${chip.text}">
+                        <i class="fa-solid ${chip.icon}"></i> ${chip.label}
+                    </div>
+                `).join('')}
+            </div>
         </div>
 
         <textarea id="journal-input" placeholder="${placeHolder}">${textAreaVal}</textarea>
@@ -679,7 +1037,10 @@ const ViewEntry = () => {
             <button class="btn" id="btn-analyze" style="flex:2;">${existingEntry ? 'Update Entry (XP Locked 🔒)' : 'Analyze Day'}</button>
             <button class="btn" id="btn-meditate-view" style="flex:1; background-color:var(--success);"><i class="fa-solid fa-spa"></i></button>
         </div>
-        <button class="btn" id="btn-history" style="background-color:var(--bg-input); color:var(--text-main);">View History</button>
+        <div style="display:flex; gap:10px; margin-bottom:12px;">
+            <button class="btn" id="btn-history" style="flex:1; background-color:var(--bg-input); color:var(--text-main);">View History</button>
+            <button class="btn" id="btn-monthly" style="flex:1; background-color:var(--bg-input); color:var(--text-main);">📊 Monthly</button>
+        </div>
     </div>
     `;
 };
@@ -717,6 +1078,7 @@ const ViewDashboard = (result) => {
             ${renderCategory('Mindset', result.categories.mindset, 'fa-brain', result.mentions.mindset)}
             ${renderCategory('Knowledge', result.categories.knowledge, 'fa-book-open', result.mentions.knowledge)}
         </div>
+        ${renderTrends()}
         <button class="btn" id="btn-home" style="background-color: var(--bg-input); color: var(--text-main);">Back to Journal</button>
     </div>
     `;
@@ -853,6 +1215,113 @@ function renderCategory(name, score, iconClass, isMentioned) {
         </div>`;
 }
 
+function renderTrends() {
+    const trends = calculateTrends();
+    if (!trends) return '';
+
+    const trendIcons = {
+        up: '↗️',
+        down: '↘️',
+        stable: '→'
+    };
+
+    const trendColors = {
+        up: 'var(--success)',
+        down: 'var(--danger)',
+        stable: 'var(--text-muted)'
+    };
+
+    return `
+        <div class="card">
+            <h3>7-Day Trends</h3>
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:16px;">Compared to previous week</p>
+            ${Object.entries(trends).map(([cat, data]) => `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <span style="text-transform:capitalize;">${cat}</span>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-weight:600;">${data.current}/5</span>
+                        <span style="color:${trendColors[data.direction]}; font-size:20px;">${trendIcons[data.direction]}</span>
+                        <span style="color:${trendColors[data.direction]}; font-size:12px; min-width:40px; text-align:right;">
+                            ${data.direction !== 'stable' ? (data.changePercent > 0 ? '+' : '') + data.changePercent + '%' : ''}
+                        </span>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+}
+
+const ViewMonthlySummary = () => {
+    const summary = getMonthlySummary();
+
+    if (!summary) {
+        return `
+            <div class="screen active">
+                <h2>Monthly Summary</h2>
+                <div class="card" style="text-align:center; padding:40px;">
+                    <p style="color:var(--text-muted);">No entries this month yet. Start journaling to see your monthly stats!</p>
+                </div>
+                <button class="btn" id="btn-home">Back to Journal</button>
+            </div>
+        `;
+    }
+
+    const monthName = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    return `
+        <div class="screen active">
+            <h2>Monthly Summary</h2>
+            <p style="color:var(--text-muted); margin-bottom:20px;">${monthName}</p>
+            
+            <div class="card" style="text-align:center;">
+                <h3>Overall Performance</h3>
+                <div class="score-big" style="font-size:64px;">${summary.overallAvg}%</div>
+                <p style="color:var(--text-muted);">Average Score</p>
+                <div style="margin-top:20px; display:flex; justify-content:space-around;">
+                    <div>
+                        <div style="font-size:24px; font-weight:bold; color:var(--accent);">${summary.daysLogged}</div>
+                        <div style="font-size:12px; color:var(--text-muted);">Days Logged</div>
+                    </div>
+                    <div>
+                        <div style="font-size:24px; font-weight:bold; color:var(--success);">${summary.totalXP}</div>
+                        <div style="font-size:12px; color:var(--text-muted);">Total XP</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h3>Category Averages</h3>
+                ${Object.entries(summary.averages).map(([cat, avg]) => `
+                    <div style="display:flex; justify-content:space-between; margin-bottom:8px;">
+                        <span style="text-transform:capitalize;">${cat}</span>
+                        <span style="font-weight:600;">${avg}/5</span>
+                    </div>
+                `).join('')}
+            </div>
+            
+            <div class="card">
+                <h3>Best & Worst Days</h3>
+                <div style="margin-bottom:16px;">
+                    <div style="color:var(--success); font-weight:600;">🏆 Best Day</div>
+                    <div style="display:flex; justify-content:space-between; margin-top:4px;">
+                        <span>${summary.bestDay.date}</span>
+                        <span>${summary.bestDay.score}%</span>
+                    </div>
+                </div>
+                <div>
+                    <div style="color:var(--text-muted); font-weight:600;">📉 Needs Improvement</div>
+                    <div style="display:flex; justify-content:space-between; margin-top:4px;">
+                        <span>${summary.worstDay.date}</span>
+                        <span>${summary.worstDay.score}%</span>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="btn" id="btn-home" style="background-color:var(--bg-input); color:var(--text-main);">Back to Journal</button>
+        </div>
+    `;
+};
+
 function applyTheme(themeName) {
     document.body.className = themeName;
     localStorage.setItem('health_theme', themeName);
@@ -867,6 +1336,7 @@ function render(viewName, data = null) {
     else if (viewName === 'settings') app.innerHTML = ViewSettings();
     else if (viewName === 'history') app.innerHTML = ViewHistory();
     else if (viewName === 'meditation') app.innerHTML = ViewMeditation();
+    else if (viewName === 'monthly') app.innerHTML = ViewMonthlySummary(); // NEW
 }
 
 function startBreathingCycle() {
@@ -910,16 +1380,19 @@ function stopMeditation() {
 
 function finishMeditation() {
     stopMeditation();
+
+    // NEW: Track meditation date for Zen Streak achievement
+    const today = new Date().toLocaleDateString();
+    if (!state.meditationDates.includes(today)) {
+        state.meditationDates.push(today);
+        localStorage.setItem('health_meditation_dates', JSON.stringify(state.meditationDates));
+    }
+
     // Add to journal
     const textarea = document.getElementById('journal-input');
     if (textarea) {
         textarea.value = textarea.value + " Meditated for 1 minute 🧘 ";
-        // Optional: Auto save/analyze?
     } else {
-        // If textarea not found (we re-rendered), we might need to manually update state history or wait for user.
-        // The render('entry') call above puts us back at the entry screen. 
-        // We can just alert user or append to a temporary storage?
-        // Simpler: Just render entry, find textarea, append.
         setTimeout(() => {
             const ta = document.getElementById('journal-input');
             if (ta) {
@@ -987,6 +1460,7 @@ function init() {
             const result = analyzeEntry(text);
 
             const existingIndex = state.history.findIndex(e => e.date === state.today);
+            const oldLevel = getLevelInfo().level; // Track level before adding XP
 
             if (existingIndex >= 0) {
                 // UPDATE: Keep old lockedXP if it exists
@@ -998,7 +1472,7 @@ function init() {
                     result: result,
                     text: text,
                     lockedXP: xpToKeep,
-                    timestamp: new Date().getTime() // NEW: Track exact time for streak logic
+                    timestamp: new Date().getTime()
                 };
             } else {
                 // NEW: Lock XP now
@@ -1007,12 +1481,22 @@ function init() {
                     result: result,
                     text: text,
                     lockedXP: result.overall,
-                    timestamp: new Date().getTime() // NEW
+                    timestamp: new Date().getTime()
                 });
+
+                // Check for level up
+                const newLevel = getLevelInfo().level;
+                if (newLevel > oldLevel) {
+                    setTimeout(() => showLevelUpAnimation(newLevel), 500);
+                }
+
+                // Check for streak celebrations
+                const streak = calculateStreak();
+                setTimeout(() => showStreakCelebration(streak), 1000);
             }
 
             localStorage.setItem('health_history', JSON.stringify(state.history));
-            checkAchievements(result); // Check for results
+            checkAchievements(result);
 
             // Success sound if doing well
             if (result.overall >= 70 && window.soundEngine) window.soundEngine.playSuccess();
@@ -1021,6 +1505,7 @@ function init() {
         }
         if (e.target.id === 'btn-home') render('entry');
         if (e.target.id === 'btn-history') render('history');
+        if (e.target.id === 'btn-monthly') render('monthly'); // NEW
         if (e.target.closest('#btn-reset-streak')) {
             if (confirm("Are you sure you want to reset your streak? (XP will remain safe)")) {
                 state.streakResetDate = new Date();
