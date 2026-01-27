@@ -498,6 +498,18 @@ const state = {
     })
 };
 
+// MIGRATION: Add lastCountedDates to old quest data
+if (state.weeklyQuests && state.weeklyQuests.quests) {
+    Object.keys(state.weeklyQuests.quests).forEach(questId => {
+        const quest = state.weeklyQuests.quests[questId];
+        if (!quest.lastCountedDates) {
+            quest.lastCountedDates = [];
+        }
+    });
+    safeSave('health_weekly_quests', state.weeklyQuests);
+}
+
+
 let meditationInterval = null;
 let breathingInterval = null;
 
