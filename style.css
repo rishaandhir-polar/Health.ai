@@ -419,6 +419,7 @@ textarea:focus {
     display: flex;
     align-items: center;
     gap: 6px;
+    user-select: none; /* Prevent text selection */
 }
 
 .chip:hover {
@@ -671,4 +672,29 @@ body.theme-tan .screen.active.meditation-theme {
     75% {
         transform: translate(-50%, -50%) scale(1.05);
     }
+}
+
+/* --- WEEKLY QUEST CARDS --- */
+.quest-card {
+    background: var(--bg-card);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: all 0.3s ease;
+}
+
+.quest-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.quest-card.complete {
+    border-color: var(--success);
+    background: linear-gradient(135deg, var(--bg-card) 0%, rgba(52, 211, 153, 0.1) 100%);
+}
+
+.quest-card.complete:hover {
+    border-color: var(--success);
 }

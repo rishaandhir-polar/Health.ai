@@ -439,17 +439,63 @@ function safeSave(key, value) {
     }
 }
 
+// Helper to get current date (always returns fresh date)
+function getCurrentDate() {
+    return new Date().toLocaleDateString();
+}
+
+// Get Monday of current week
+function getWeekStart() {
+    const now = new Date();
+    const day = now.getDay();
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1); // Adjust to Monday
+    const monday = new Date(now.setDate(diff));
+    return monday.toLocaleDateString();
+}
+
+// Check if we need to reset weekly quests
+function checkWeeklyReset() {
+    const currentWeekStart = getWeekStart();
+    if (state.weeklyQuests.weekStart !== currentWeekStart) {
+        // New week - reset all quests
+        state.weeklyQuests = {
+            weekStart: currentWeekStart,
+            quests: {
+                perfect_week: { completed: false, progress: 0, xpAwarded: false, lastCountedDates: [] },
+                category_master: { completed: false, progress: 0, category: null, xpAwarded: false, lastCountedDates: [] },
+                balanced_life: { completed: false, progress: 0, xpAwarded: false, lastCountedDates: [] },
+                social_butterfly: { completed: false, progress: 0, xpAwarded: false, lastCountedDates: [] },
+                knowledge_seeker: { completed: false, progress: 0, xpAwarded: false, lastCountedDates: [] }
+            },
+            totalBonusXP: 0
+        };
+        safeSave('health_weekly_quests', state.weeklyQuests);
+    }
+}
+
+
 const state = {
     theme: localStorage.getItem('health_theme') || 'theme-light',
     history: safeJSON('health_history', []),
-    today: new Date().toLocaleDateString(),
+    today: getCurrentDate(),
     streakResetDate: localStorage.getItem('health_streak_reset') ? new Date(localStorage.getItem('health_streak_reset')) : null,
     meditationActive: false,
     meditationPhase: 'ready', // ready, inhale, hold, exhale
     meditationTime: 60, // seconds
     unlockedBadges: safeJSON('health_badges', []),
     goals: safeJSON('health_goals', []), // NEW: Weekly goals
-    meditationDates: safeJSON('health_meditation_dates', []) // NEW: Track meditation days for Zen Streak
+    meditationDates: safeJSON('health_meditation_dates', []), // NEW: Track meditation days for Zen Streak
+    weeklyQuests: safeJSON('health_weekly_quests', {
+        weekStart: getWeekStart(),
+        quests: {
+            perfect_week: { completed: false, progress: 0, xpAwarded: false, lastCountedDates: [] },
+            category_master: { completed: false, progress: 0, category: null, xpAwarded: false, lastCountedDates: [] },
+            balanced_life: { completed: false, progress: 0, xpAwarded: false, lastCountedDates: [] },
+            social_butterfly: { completed: false, progress: 0, xpAwarded: false, lastCountedDates: [] },
+            knowledge_seeker: { completed: false, progress: 0, xpAwarded: false, lastCountedDates: [] }
+        },
+        totalBonusXP: 0
+    })
 };
 
 let meditationInterval = null;
@@ -543,6 +589,50 @@ const ACHIEVEMENTS = [
     { id: 'scholar', icon: 'fa-graduation-cap', title: 'Scholar', desc: '7 days of 5/5 knowledge.' },
     { id: 'zen_streak', icon: 'fa-om', title: 'Zen Streak', desc: 'Meditate 3 days in a row.' }
 ];
+
+const WEEKLY_QUESTS = [
+    {
+        id: 'perfect_week',
+        icon: 'fa-star',
+        title: 'Perfect Week',
+        desc: 'Score 80%+ for 7 days',
+        reward: 150,
+        maxProgress: 7
+    },
+    {
+        id: 'category_master',
+        icon: 'fa-crown',
+        title: 'Category Master',
+        desc: 'Get 5/5 in one category for 7 days',
+        reward: 150,
+        maxProgress: 7
+    },
+    {
+        id: 'balanced_life',
+        icon: 'fa-scale-balanced',
+        title: 'Balanced Life',
+        desc: 'Score 4+ in all categories for 5 days',
+        reward: 150,
+        maxProgress: 5
+    },
+    {
+        id: 'social_butterfly',
+        icon: 'fa-user-group',
+        title: 'Social Butterfly',
+        desc: 'Mention friends/family 5 times',
+        reward: 150,
+        maxProgress: 5
+    },
+    {
+        id: 'knowledge_seeker',
+        icon: 'fa-graduation-cap',
+        title: 'Knowledge Seeker',
+        desc: 'Learn something new for 7 days',
+        reward: 150,
+        maxProgress: 7
+    }
+];
+
 
 const app = document.getElementById('app');
 
@@ -740,6 +830,133 @@ function showStreakCelebration(streak) {
     }
 }
 
+// --- WEEKLY QUEST SYSTEM ---
+
+function updateWeeklyQuests(result) {
+    checkWeeklyReset();
+
+    const quests = state.weeklyQuests.quests;
+    const today = getCurrentDate();
+    let questsUpdated = false;
+
+    // 1. Perfect Week - 80%+ for 7 days (count once per day)
+    if (!quests.perfect_week.completed && result.overall >= 80) {
+        if (!quests.perfect_week.lastCountedDates.includes(today)) {
+            quests.perfect_week.progress++;
+            quests.perfect_week.lastCountedDates.push(today);
+            if (quests.perfect_week.progress >= 7 && !quests.perfect_week.xpAwarded) {
+                completeQuest('perfect_week');
+            }
+            questsUpdated = true;
+        }
+    }
+
+    // 2. Category Master - 5/5 in one category for 7 days (count once per day)
+    if (!quests.category_master.completed) {
+        const cats = result.categories;
+        const perfectCat = Object.keys(cats).find(cat => cats[cat] >= 5);
+        if (perfectCat) {
+            if (!quests.category_master.category) {
+                quests.category_master.category = perfectCat;
+            }
+            if (quests.category_master.category === perfectCat && !quests.category_master.lastCountedDates.includes(today)) {
+                quests.category_master.progress++;
+                quests.category_master.lastCountedDates.push(today);
+                if (quests.category_master.progress >= 7 && !quests.category_master.xpAwarded) {
+                    completeQuest('category_master');
+                }
+                questsUpdated = true;
+            }
+        }
+    }
+
+    // 3. Balanced Life - 4+ in all categories for 5 days (count once per day)
+    if (!quests.balanced_life.completed) {
+        const cats = result.categories;
+        const allBalanced = Object.values(cats).every(score => score >= 4);
+        if (allBalanced && !quests.balanced_life.lastCountedDates.includes(today)) {
+            quests.balanced_life.progress++;
+            quests.balanced_life.lastCountedDates.push(today);
+            if (quests.balanced_life.progress >= 5 && !quests.balanced_life.xpAwarded) {
+                completeQuest('balanced_life');
+            }
+            questsUpdated = true;
+        }
+    }
+
+    // 4. Social Butterfly - mention friends/family 5 times (can count multiple per day)
+    if (!quests.social_butterfly.completed && result.mentions.mindset) {
+        const text = document.getElementById('journal-input').value.toLowerCase();
+        if (text.includes('friend') || text.includes('family')) {
+            quests.social_butterfly.progress++;
+            if (quests.social_butterfly.progress >= 5 && !quests.social_butterfly.xpAwarded) {
+                completeQuest('social_butterfly');
+            }
+            questsUpdated = true;
+        }
+    }
+
+    // 5. Knowledge Seeker - learn something new for 7 days (count once per day)
+    if (!quests.knowledge_seeker.completed && result.categories.knowledge >= 4) {
+        if (!quests.knowledge_seeker.lastCountedDates.includes(today)) {
+            quests.knowledge_seeker.progress++;
+            quests.knowledge_seeker.lastCountedDates.push(today);
+            if (quests.knowledge_seeker.progress >= 7 && !quests.knowledge_seeker.xpAwarded) {
+                completeQuest('knowledge_seeker');
+            }
+            questsUpdated = true;
+        }
+    }
+
+    if (questsUpdated) {
+        safeSave('health_weekly_quests', state.weeklyQuests);
+    }
+}
+
+function completeQuest(questId) {
+    const quest = WEEKLY_QUESTS.find(q => q.id === questId);
+    if (!quest) return;
+
+    state.weeklyQuests.quests[questId].completed = true;
+    state.weeklyQuests.quests[questId].xpAwarded = true;
+    state.weeklyQuests.totalBonusXP += quest.reward;
+
+    // CRITICAL: Add quest XP to today's entry so it counts toward total XP
+    const todayEntry = state.history.find(e => e.date === state.today);
+    if (todayEntry) {
+        // Add quest XP to locked XP
+        todayEntry.lockedXP = (todayEntry.lockedXP || todayEntry.result.overall) + quest.reward;
+        safeSave('health_history', state.history);
+    }
+
+    // Show celebration
+    showQuestComplete(quest);
+
+    safeSave('health_weekly_quests', state.weeklyQuests);
+}
+
+function showQuestComplete(quest) {
+    const popup = document.createElement('div');
+    popup.className = 'achievement-popup';
+    popup.innerHTML = `
+        <div class="achievement-content">
+            <i class="fa-solid ${quest.icon}" style="font-size: 48px; color: #fbbf24; margin-bottom: 16px;"></i>
+            <h2>Quest Complete!</h2>
+            <h3>${quest.title}</h3>
+            <p>+${quest.reward} Bonus XP!</p>
+        </div>
+    `;
+    document.body.appendChild(popup);
+
+    createConfetti();
+    if (window.soundEngine) window.soundEngine.playSuccess();
+
+    setTimeout(() => {
+        popup.style.opacity = '0';
+        setTimeout(() => popup.remove(), 500);
+    }, 4000);
+}
+
 // --- NEW: TREND ANALYSIS ---
 
 function calculateTrends() {
@@ -927,6 +1144,9 @@ const ViewOnboarding = () => `
 `;
 
 const ViewEntry = () => {
+    // Update today's date to ensure it's current
+    state.today = getCurrentDate();
+
     const existingEntry = state.history.find(e => e.date === state.today);
     const lvl = getLevelInfo();
 
@@ -1059,6 +1279,7 @@ const ViewEntry = () => {
         <div style="display:flex; gap:10px; margin-bottom:12px;">
             <button class="btn" id="btn-history" style="flex:1; background-color:var(--bg-input); color:var(--text-main);">View History</button>
             <button class="btn" id="btn-monthly" style="flex:1; background-color:var(--bg-input); color:var(--text-main);">📊 Monthly</button>
+            <button class="btn" id="btn-quests" style="flex:1; background-color:var(--bg-input); color:var(--text-main);">🏆 Quests</button>
         </div>
     </div>
     `;
@@ -1128,36 +1349,78 @@ const ViewMeditation = () => `
 `;
 
 const ViewHistory = () => {
-    const uniqueDays = {};
-    state.history.forEach(entry => uniqueDays[entry.date] = entry);
-    const entries = Object.values(uniqueDays).sort((a, b) => new Date(a.date) - new Date(b.date)).slice(-7);
-    const barsHtml = entries.map(entry => {
-        const d = new Date(entry.date);
-        const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
-        // FIXED: Use Locked XP if available, so history doesn't fluctuate
-        const score = entry.lockedXP !== undefined ? entry.lockedXP : entry.result.overall;
-        const isToday = entry.date === state.today;
+    // Create day labels in order: Mon, Tue, Wed, Thu, Fri, Sat, Sun
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-        let colorClass = 'high';
-        if (score < 40) colorClass = 'low';
-        else if (score < 70) colorClass = 'mid';
+    // Get today's day of week (0 = Sunday, 6 = Saturday)
+    const today = new Date();
+    const todayDayOfWeek = today.getDay();
+
+    // Calculate which day is Monday of this week
+    const mondayOffset = todayDayOfWeek === 0 ? -6 : 1 - todayDayOfWeek;
+    const monday = new Date(today);
+    monday.setDate(today.getDate() + mondayOffset);
+
+    // Create array of last 7 days starting from Monday
+    const weekDays = [];
+    for (let i = 0; i < 7; i++) {
+        const date = new Date(monday);
+        date.setDate(monday.getDate() + i);
+        const dateStr = date.toLocaleDateString();
+        const dayName = dayNames[date.getDay()];
+
+        // Find entry for this day
+        const entry = state.history.find(e => e.date === dateStr);
+        const score = entry ? (entry.lockedXP !== undefined ? entry.lockedXP : entry.result.overall) : 0;
+
+        weekDays.push({
+            dayName,
+            score,
+            hasEntry: !!entry,
+            isToday: dateStr === state.today
+        });
+    }
+
+    const barsHtml = weekDays.map(day => {
+        const height = day.hasEntry ? day.score : 0;
+        let colorClass = 'low';
+        if (height >= 70) colorClass = 'high';
+        else if (height >= 50) colorClass = 'mid';
 
         return `
             <div class="graph-bar-group">
-                <div class="graph-score-label">${score}</div>
-                <div class="graph-bar ${colorClass}" style="height: ${score}%;"></div>
-                <div class="graph-label" style="${isToday ? 'font-weight:bold; color:var(--text-main);' : ''}">${dayName}</div>
+                <div class="graph-score-label">${day.hasEntry ? Math.round(height) : '-'}</div>
+                <div class="graph-bar ${colorClass}" style="height: ${height}%;"></div>
+                <div class="graph-label" style="${day.isToday ? 'font-weight:bold; color:var(--text-main);' : ''}">${day.dayName}</div>
             </div>
         `;
     }).join('');
+
+    const streak = calculateStreak();
+    const totalXP = calculateXP();
+
     return `
     <div class="screen active">
-        <h2>Weekly History</h2>
+        <h2>Your Week</h2>
         <div class="card">
-            <p>Last 7 Entries</p>
-            <div class="graph-container">${entries.length === 0 ? '<p style="margin:auto; opacity:0.5;">No data yet</p>' : barsHtml}</div>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 16px;">
+                <div>
+                    <p style="margin: 0; color: var(--text-muted);">Current Streak</p>
+                    <p style="margin: 4px 0 0 0; font-size: 24px; font-weight: bold; color: #fca5a5;">🔥 ${streak} days</p>
+                </div>
+                <div style="text-align: right;">
+                    <p style="margin: 0; color: var(--text-muted);">Total XP</p>
+                    <p style="margin: 4px 0 0 0; font-size: 24px; font-weight: bold; color: var(--accent);">${totalXP}</p>
+                </div>
+            </div>
         </div>
-        <button class="btn" id="btn-home">Back</button>
+        
+        <div class="card">
+            <h3 style="margin-bottom: 16px;">Weekly Progress</h3>
+            <div class="graph-container">${barsHtml}</div>
+        </div>
+        
+        <button class="btn" id="btn-home">Back to Journal</button>
     </div>
     `;
 };
@@ -1204,6 +1467,7 @@ const ViewSettings = () => {
     </div>
     `;
 };
+
 
 function renderCategory(name, score, iconClass, isMentioned) {
     if (!isMentioned) {
@@ -1341,6 +1605,67 @@ const ViewMonthlySummary = () => {
     `;
 };
 
+const ViewWeeklyQuests = () => {
+    checkWeeklyReset();
+
+    const questsHTML = WEEKLY_QUESTS.map(quest => {
+        const questData = state.weeklyQuests.quests[quest.id];
+        const progress = questData.progress || 0;
+        const percent = Math.round((progress / quest.maxProgress) * 100);
+        const isComplete = questData.completed;
+
+        return `
+            <div class="quest-card ${isComplete ? 'complete' : ''}">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fa-solid ${quest.icon}" style="font-size: 32px; color: ${isComplete ? 'var(--success)' : 'var(--accent)'}"></i>
+                    <div style="flex: 1;">
+                        <h3 style="margin: 0;">${quest.title}</h3>
+                        <p style="margin: 4px 0; color: var(--text-muted); font-size: 14px;">${quest.desc}</p>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+                            <div class="xp-bar-bg" style="flex: 1; height: 8px;">
+                                <div class="xp-bar-fill" style="width: ${percent}%; height: 8px;"></div>
+                            </div>
+                            <span style="font-size: 12px; color: var(--text-muted);">${progress}/${quest.maxProgress}</span>
+                        </div>
+                    </div>
+                    <div style="text-align: center;">
+                        ${isComplete
+                ? '<i class="fa-solid fa-check-circle" style="font-size: 24px; color: var(--success);"></i>'
+                : `<span style="font-weight: bold; color: var(--accent);">+${quest.reward} XP</span>`
+            }
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    const weekEnd = new Date(state.weeklyQuests.weekStart);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+
+    return `
+        <div class="screen active">
+            <h2>Weekly Quests</h2>
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <div>
+                        <p style="margin: 0; color: var(--text-muted);">Week of ${state.weeklyQuests.weekStart}</p>
+                        <p style="margin: 4px 0 0 0; font-size: 14px; color: var(--text-muted);">Resets every Monday</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <p style="margin: 0; font-size: 24px; font-weight: bold; color: var(--accent);">${state.weeklyQuests.totalBonusXP} XP</p>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-muted);">Bonus Earned</p>
+                    </div>
+                </div>
+            </div>
+            
+            ${questsHTML}
+            
+            <button class="btn" id="btn-home" style="margin-top: 16px;">Back to Journal</button>
+        </div>
+    `;
+};
+
+
 function applyTheme(themeName) {
     document.body.className = themeName;
     localStorage.setItem('health_theme', themeName);
@@ -1356,6 +1681,7 @@ function render(viewName, data = null) {
     else if (viewName === 'history') app.innerHTML = ViewHistory();
     else if (viewName === 'meditation') app.innerHTML = ViewMeditation();
     else if (viewName === 'monthly') app.innerHTML = ViewMonthlySummary(); // NEW
+    else if (viewName === 'quests') app.innerHTML = ViewWeeklyQuests(); // NEW
 }
 
 function startBreathingCycle() {
@@ -1469,6 +1795,7 @@ function init() {
 
         // Handle Chip Clicks
         if (e.target.closest('.chip')) {
+            e.preventDefault(); // Prevent textarea focus
             if (window.soundEngine) window.soundEngine.playClick();
             const chip = e.target.closest('.chip');
             const textToAdd = chip.getAttribute('data-text');
@@ -1502,6 +1829,9 @@ function init() {
         }
 
         if (e.target.id === 'btn-analyze') {
+            // Update today's date to ensure it's current before saving
+            state.today = getCurrentDate();
+
             const text = document.getElementById('journal-input').value;
             if (text.length < 2) { alert("Please write something!"); return; }
             const result = analyzeEntry(text);
@@ -1549,6 +1879,9 @@ function init() {
 
             checkAchievements(result);
 
+            // Update weekly quests
+            updateWeeklyQuests(result);
+
             // Success sound if doing well
             if (result.overall >= 70 && window.soundEngine) window.soundEngine.playSuccess();
 
@@ -1566,6 +1899,7 @@ function init() {
         }
         if (e.target.id === 'btn-history') render('history');
         if (e.target.id === 'btn-monthly') render('monthly'); // NEW
+        if (e.target.id === 'btn-quests') render('quests'); // NEW
         if (e.target.closest('#btn-reset-streak')) {
             if (confirm("Are you sure you want to reset your streak? (XP will remain safe)")) {
                 state.streakResetDate = new Date();
