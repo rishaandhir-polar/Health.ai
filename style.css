@@ -419,7 +419,8 @@ textarea:focus {
     display: flex;
     align-items: center;
     gap: 6px;
-    user-select: none; /* Prevent text selection */
+    user-select: none;
+    /* Prevent text selection */
 }
 
 .chip:hover {
@@ -439,6 +440,8 @@ textarea:focus {
     color: white;
     border-color: var(--accent);
     font-weight: 600;
+    transform: scale(1.05);
+    box-shadow: 0 4px 12px rgba(96, 165, 250, 0.4);
 }
 
 .chip.negative.selected {

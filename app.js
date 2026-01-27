@@ -1,149 +1,36 @@
 // --- AI LOGIC ---
-const KEYWORDS = {
-    food: {
-        good: ['salad', 'vegetable', 'fruit', 'water', 'healthy', 'protein', 'chicken', 'fish', 'carrot', 'apple', 'banana', 'home cooked', 'grilled', 'oats', 'eggs', 'rice', 'meal', 'ate', 'dinner', 'lunch', 'breakfast', 'smoothie', 'yogurt', 'steak', 'avocado', 'nuts'],
-        bad: ['sugar', 'candy', 'soda', 'coke', 'fast food', 'burger', 'fries', 'cake', 'chocolate', 'processed', 'grease', 'pizza', 'ice cream', 'chips', 'cookie', 'sweets', 'donut', 'mcdonalds']
-    },
-    screen: {
-        good: ['off phone', 'no screen', 'detox', 'touch grass'],
-        bad: ['tv', 'netflix', 'tiktok', 'instagram', 'youtube', 'video game', 'played', 'scrolled', 'watch', 'phone', 'computer', 'iPad', 'tablet', 'roblox', 'fortnite', 'minecraft']
-    },
-    active: {
-        good: ['run', 'walk', 'gym', 'hike', 'bike', 'sport', 'basketball', 'soccer', 'outside', 'park', 'sun', 'exercise', 'workout', 'swimming', 'tennis', 'football', 'played outside', 'grass', 'fresh air', 'treadmill', 'lifted', 'weights'],
-        bad: ['inside', 'couch', 'bed all day', 'lazy', 'sat', 'stayed in', 'did nothing', 'bored']
-    },
-    sleep: {
-        good: ['slept well', 'rested', 'early', '8 hours', '9 hours', '7 hours', '10 hours', 'nap', 'bedtime'],
-        bad: ['tired', 'insomnia', 'late', 'all nighter', '4 hours', '5 hours', '6 hours', 'cloudy', 'sleepy', 'woke up late']
-    },
-    hydration: {
-        good: ['water', 'glass of water', 'bottle', 'hydrated', 'tea', 'drink', 'gallon'],
-        bad: ['thirsty', 'dehydrated', 'soda', 'coke', 'pepsi', 'alcohol', 'beer', 'wine', 'dry', 'energy drink']
-    },
-    mindset: {
-        good: ['happy', 'grateful', 'meditate', 'journal', 'calm', 'proud', 'smile', 'laughed', 'friend', 'social', 'family', 'fun', 'love', 'excited', 'productive', 'good day'],
-        bad: ['sad', 'stressed', 'angry', 'anxious', 'cried', 'lonely', 'depressed', 'bored', 'mad', 'upset', 'bad day', 'horrible']
-    },
-    knowledge: {
-        good: ['read', 'book', 'studied', 'homework', 'learning', 'painting', 'drawing', 'board game', 'lego', 'math', 'science', 'coding', 'history', 'school', 'class', 'piano', 'guitar', 'practice', 'skill', 'course'],
-        bad: ['procrastinated', 'distracted', 'skipped', 'forgot']
-    }
-};
+// Text analysis replaced by Chip-Based Scoring
 
-function analyzeEntry(text) {
-    const lowerText = text.toLowerCase();
-    let scores = { food: 0, screen: 0, active: 0, sleep: 0, hydration: 0, mindset: 0, knowledge: 0 };
-    let mentions = { food: false, screen: false, active: false, sleep: false, hydration: false, mindset: false, knowledge: false };
+// NEW: Chip-based analysis - no text parsing!
+function analyzeChipSelection() {
+    const scores = { food: 0, screen: 0, active: 0, sleep: 0, hydration: 0, mindset: 0, knowledge: 0 };
+    const mentions = { food: false, screen: false, active: false, sleep: false, hydration: false, mindset: false, knowledge: false };
 
-    // 1. KEYWORD SCORING
-    for (const category in KEYWORDS) {
-        const catData = KEYWORDS[category];
-        catData.good.forEach(word => {
-            if (lowerText.includes(word)) {
-                if (category === 'screen') scores[category] = 5;
-                else scores[category] += 2.5;
-                mentions[category] = true;
-            }
-        });
-        catData.bad.forEach(word => {
-            if (lowerText.includes(word)) {
-                if (category === 'screen') scores[category] += 1;
-                else scores[category] -= 2.0;
-                mentions[category] = true;
-            }
-        });
-    }
+    // Combine positive and negative chips
+    const allChips = [...SMART_CHIPS, ...NEGATIVE_CHIPS];
 
-    // 2. DURATION LOGIC
-    // A. ACTIVE TIME
-    const activeMatch = lowerText.match(/(\d+)\s*(hours?|hr|mins?|minutes?)\s*.*(run|walk|gym|hike|bike|sport|exercise|workout|played)/);
-    if (activeMatch) {
-        mentions.active = true;
-        const amount = parseInt(activeMatch[1]);
-        const unit = activeMatch[2];
-        let minutes = amount;
-        if (unit.startsWith('h')) minutes = amount * 60;
-        if (minutes >= 90) scores.active = 6;
-        else if (minutes >= 45) scores.active = 5;
-        else if (minutes >= 30) scores.active = 4;
-        else scores.active = 3;
-    }
-    // B. SLEEP
-    const sleepMatch = lowerText.match(/(\d+)\s*hours?\s*(sleep|slept)/);
-    if (sleepMatch) {
-        mentions.sleep = true;
-        const hours = parseInt(sleepMatch[1]);
-        if (hours >= 9) scores.sleep = 6;
-        else if (hours >= 7) scores.sleep = 5;
-        else if (hours >= 5) scores.sleep = 3;
-        else scores.sleep = 1;
-    }
-    // C. KNOWLEDGE
-    const studyMatch = lowerText.match(/(\d+)\s*(hours?|hr|mins?|minutes?)\s*.*(read|study|studied|homework|learn|practic)/);
-    if (studyMatch) {
-        mentions.knowledge = true;
-        const amount = parseInt(studyMatch[1]);
-        const unit = studyMatch[2];
-        let minutes = amount;
-        if (unit.startsWith('h')) minutes = amount * 60;
-        if (minutes >= 60) scores.knowledge = 5;
-        else if (minutes >= 30) scores.knowledge = 4;
-        else scores.knowledge = 3;
-    }
-    // D. SCREEN
-    const screenMatch = lowerText.match(/(\d+)\s*(hours?|hr|mins?|minutes?)\s*.*(game|tv|phone|screen|played|watch)/);
-    if (screenMatch) {
-        mentions.screen = true;
-        const amount = parseInt(screenMatch[1]);
-        const unit = screenMatch[2];
-        let minutes = amount;
-        if (unit.startsWith('h')) minutes = amount * 60;
-        if (minutes <= 120) scores.screen = 5.0;
-        else if (minutes <= 180) scores.screen = 3.5;
-        else if (minutes <= 240) scores.screen = 2.0;
-        else scores.screen = 0.5;
-    } else if (mentions.screen) {
-        let val = scores.screen;
-        if (val > 2) scores.screen = 3.0;
-        else scores.screen = 4.0;
-    }
-    // E. HYDRATION
-    if (lowerText.match(/(\d+)\s*(liters?|gallons?)/)) {
-        mentions.hydration = true;
-        scores.hydration = 5.0;
-    }
-    const glassMatch = lowerText.match(/(\d+)\s*(glasses?|cups?|bottles?)/);
-    if (glassMatch) {
-        mentions.hydration = true;
-        const count = parseInt(glassMatch[1]);
-        if (count >= 5) scores.hydration = 5.0;
-        else scores.hydration = 3.0;
-    }
-
-    // 3. FINAL CLAMPING
-    for (const key in scores) {
-        if (!mentions[key]) {
-            scores[key] = 0;
-        } else {
-            if (scores[key] > 5) scores[key] = 5;
-            if (scores[key] <= 0) scores[key] = 0.5;
-        }
-    }
-
-    // 4. OVERALL SCORE
-    let totalPoints = 0;
-    const categories = Object.keys(scores);
-    const maxPossible = categories.length * 5;
-
-    categories.forEach(key => {
-        if (mentions[key]) {
-            totalPoints += scores[key];
-        } else {
-            totalPoints += 0; // STRICT: 0 points for unmentioned
+    // Calculate scores from selected chips
+    state.selectedChips.forEach(chipId => {
+        const chip = allChips.find(c => c.id === chipId);
+        if (chip) {
+            scores[chip.category] += chip.score;
+            mentions[chip.category] = true;
         }
     });
 
-    let overallPercent = Math.round((totalPoints / maxPossible) * 100);
+    // Clamp scores to 0.5-5 range
+    Object.keys(scores).forEach(category => {
+        if (!mentions[category]) {
+            scores[category] = 0;
+        } else {
+            scores[category] = Math.max(0.5, Math.min(5, scores[category]));
+        }
+    });
+
+    // Calculate overall percentage
+    const totalPoints = Object.values(scores).reduce((sum, score) => sum + score, 0);
+    const maxPossible = 7 * 5; // 7 categories × 5 points
+    const overallPercent = Math.round((totalPoints / maxPossible) * 100);
 
     return {
         overall: overallPercent,
@@ -485,6 +372,7 @@ const state = {
     unlockedBadges: safeJSON('health_badges', []),
     goals: safeJSON('health_goals', []), // NEW: Weekly goals
     meditationDates: safeJSON('health_meditation_dates', []), // NEW: Track meditation days for Zen Streak
+    selectedChips: [], // NEW: Track selected chips for today
     weeklyQuests: safeJSON('health_weekly_quests', {
         weekStart: getWeekStart(),
         quests: {
@@ -514,72 +402,72 @@ let meditationInterval = null;
 let breathingInterval = null;
 
 // --- CONFIG ---
-// SMART CHIPS - Organized by Category
+// SMART CHIPS - Each chip has ID, score value, and category
 const SMART_CHIPS = [
     // FOOD & NUTRITION
-    { label: "Drank Water", icon: "fa-glass-water", text: "Drank water 💧", category: "food" },
-    { label: "Ate Salad", icon: "fa-leaf", text: "Ate a healthy salad 🥗", category: "food" },
-    { label: "Fruit", icon: "fa-apple-whole", text: "Ate fruit 🍎", category: "food" },
-    { label: "Home Cooked", icon: "fa-utensils", text: "Made a home-cooked meal 🍳", category: "food" },
-    { label: "Protein", icon: "fa-drumstick-bite", text: "Ate protein (chicken/fish/eggs) 🍗", category: "food" },
-    { label: "Breakfast", icon: "fa-mug-saucer", text: "Had a healthy breakfast ☕", category: "food" },
+    { id: 'water', label: "Drank Water", icon: "fa-glass-water", category: "hydration", score: 5.0 },
+    { id: 'salad', label: "Ate Salad", icon: "fa-leaf", category: "food", score: 2.5 },
+    { id: 'fruit', label: "Fruit", icon: "fa-apple-whole", category: "food", score: 2.5 },
+    { id: 'home_cooked', label: "Home Cooked", icon: "fa-utensils", category: "food", score: 2.5 },
+    { id: 'protein', label: "Protein", icon: "fa-drumstick-bite", category: "food", score: 2.5 },
+    { id: 'breakfast', label: "Breakfast", icon: "fa-mug-saucer", category: "food", score: 2.5 },
 
     // EXERCISE & ACTIVITY
-    { label: "Run/Walk", icon: "fa-person-running", text: "Went for a run/walk 🏃", category: "active" },
-    { label: "Gym", icon: "fa-dumbbell", text: "Hit the gym 💪", category: "active" },
-    { label: "Yoga", icon: "fa-spa", text: "Did yoga 🧘", category: "active" },
-    { label: "Sports", icon: "fa-basketball", text: "Played sports 🏀", category: "active" },
-    { label: "Bike Ride", icon: "fa-bicycle", text: "Went for a bike ride 🚴", category: "active" },
-    { label: "Stretching", icon: "fa-person-walking", text: "Did stretching exercises 🤸", category: "active" },
+    { id: 'run_walk', label: "Run/Walk", icon: "fa-person-running", category: "active", score: 4.0 },
+    { id: 'gym', label: "Gym", icon: "fa-dumbbell", category: "active", score: 5.0 },
+    { id: 'yoga', label: "Yoga", icon: "fa-spa", category: "active", score: 4.0 },
+    { id: 'sports', label: "Sports", icon: "fa-basketball", category: "active", score: 4.0 },
+    { id: 'bike', label: "Bike Ride", icon: "fa-bicycle", category: "active", score: 4.0 },
+    { id: 'stretching', label: "Stretching", icon: "fa-person-walking", category: "active", score: 3.0 },
 
     // SLEEP & REST
-    { label: "Good Sleep", icon: "fa-bed", text: "Slept 8 hours 😴", category: "sleep" },
-    { label: "Early Bedtime", icon: "fa-moon", text: "Went to bed early 🌙", category: "sleep" },
-    { label: "Nap", icon: "fa-bed-pulse", text: "Took a refreshing nap 💤", category: "sleep" },
+    { id: 'good_sleep', label: "Good Sleep", icon: "fa-bed", category: "sleep", score: 5.0 },
+    { id: 'early_bed', label: "Early Bedtime", icon: "fa-moon", category: "sleep", score: 3.0 },
+    { id: 'nap', label: "Nap", icon: "fa-bed-pulse", category: "sleep", score: 2.0 },
 
     // LEARNING & PRODUCTIVITY
-    { label: "Read Book", icon: "fa-book", text: "Read a book 📖", category: "knowledge" },
-    { label: "Studied", icon: "fa-graduation-cap", text: "Studied/did homework 📚", category: "knowledge" },
-    { label: "Learned Skill", icon: "fa-lightbulb", text: "Learned something new 💡", category: "knowledge" },
-    { label: "Productive Work", icon: "fa-laptop", text: "Had a productive work session 💻", category: "knowledge" },
-    { label: "Creative", icon: "fa-palette", text: "Did something creative (art/music) 🎨", category: "knowledge" },
+    { id: 'read', label: "Read Book", icon: "fa-book", category: "knowledge", score: 4.0 },
+    { id: 'studied', label: "Studied", icon: "fa-graduation-cap", category: "knowledge", score: 4.0 },
+    { id: 'learned', label: "Learned Skill", icon: "fa-lightbulb", category: "knowledge", score: 4.0 },
+    { id: 'productive', label: "Productive Work", icon: "fa-laptop", category: "knowledge", score: 3.0 },
+    { id: 'creative', label: "Creative", icon: "fa-palette", category: "knowledge", score: 3.0 },
 
     // MINDSET & SOCIAL
-    { label: "Meditated", icon: "fa-om", text: "Meditated 🧘", category: "mindset" },
-    { label: "Grateful", icon: "fa-heart", text: "Feeling grateful ❤️", category: "mindset" },
-    { label: "Friends", icon: "fa-user-group", text: "Spent time with friends 👥", category: "mindset" },
-    { label: "Family Time", icon: "fa-house-heart", text: "Quality time with family 👨‍👩‍👧", category: "mindset" },
-    { label: "Helped Someone", icon: "fa-hand-holding-heart", text: "Helped someone today 🤝", category: "mindset" },
-    { label: "Journaled", icon: "fa-pen", text: "Wrote in my journal ✍️", category: "mindset" },
+    { id: 'meditated', label: "Meditated", icon: "fa-om", category: "mindset", score: 4.0 },
+    { id: 'grateful', label: "Grateful", icon: "fa-heart", category: "mindset", score: 3.0 },
+    { id: 'friends', label: "Friends", icon: "fa-user-group", category: "mindset", score: 4.0 },
+    { id: 'family', label: "Family Time", icon: "fa-house-heart", category: "mindset", score: 4.0 },
+    { id: 'helped', label: "Helped Someone", icon: "fa-hand-holding-heart", category: "mindset", score: 3.0 },
+    { id: 'journaled', label: "Journaled", icon: "fa-pen", category: "mindset", score: 2.0 },
 
-    // SCREEN TIME
-    { label: "No Phone", icon: "fa-mobile-screen-button", text: "Stayed off my phone 📵", category: "screen" },
-    { label: "Screen Break", icon: "fa-eye-slash", text: "Took screen breaks 👀", category: "screen" },
-    { label: "Outside Time", icon: "fa-tree", text: "Spent time outside 🌳", category: "screen" }
+    // SCREEN TIME (positive = less screen)
+    { id: 'no_phone', label: "No Phone", icon: "fa-mobile-screen-button", category: "screen", score: 5.0 },
+    { id: 'screen_break', label: "Screen Break", icon: "fa-eye-slash", category: "screen", score: 3.0 },
+    { id: 'outside', label: "Outside Time", icon: "fa-tree", category: "screen", score: 3.0 }
 ];
 
 const NEGATIVE_CHIPS = [
     // FOOD
-    { label: "Junk Food", icon: "fa-burger", text: "Ate junk food 🍔", category: "food" },
-    { label: "Soda/Sugar", icon: "fa-candy-cane", text: "Drank soda / ate sweets 🍬", category: "food" },
-    { label: "Skipped Meal", icon: "fa-ban", text: "Skipped a meal 🚫", category: "food" },
+    { id: 'junk_food', label: "Junk Food", icon: "fa-burger", category: "food", score: -2.0 },
+    { id: 'soda_sugar', label: "Soda/Sugar", icon: "fa-candy-cane", category: "food", score: -1.5 },
+    { id: 'skipped_meal', label: "Skipped Meal", icon: "fa-ban", category: "food", score: -1.5 },
 
     // SCREEN TIME
-    { label: "Too Much TV", icon: "fa-tv", text: "Watched too much TV 📺", category: "screen" },
-    { label: "Phone Scroll", icon: "fa-mobile", text: "Doomscrolled on phone 📱", category: "screen" },
-    { label: "Video Games", icon: "fa-gamepad", text: "Played video games all day 🎮", category: "screen" },
+    { id: 'too_much_tv', label: "Too Much TV", icon: "fa-tv", category: "screen", score: -3.0 },
+    { id: 'phone_scroll', label: "Phone Scroll", icon: "fa-mobile", category: "screen", score: -2.5 },
+    { id: 'video_games', label: "Video Games", icon: "fa-gamepad", category: "screen", score: -2.0 },
 
     // ACTIVITY
-    { label: "Lazy", icon: "fa-couch", text: "Laid on couch all day 🛋️", category: "active" },
-    { label: "No Exercise", icon: "fa-person-walking-dashed-line-arrow-right", text: "Didn't exercise 😞", category: "active" },
+    { id: 'lazy', label: "Lazy", icon: "fa-couch", category: "active", score: -2.0 },
+    { id: 'no_exercise', label: "No Exercise", icon: "fa-person-walking-dashed-line-arrow-right", category: "active", score: -1.5 },
 
     // SLEEP
-    { label: "Bad Sleep", icon: "fa-face-dizzy", text: "Slept poorly 😫", category: "sleep" },
-    { label: "Up Late", icon: "fa-clock", text: "Stayed up way too late 🦉", category: "sleep" },
+    { id: 'bad_sleep', label: "Bad Sleep", icon: "fa-face-dizzy", category: "sleep", score: -2.0 },
+    { id: 'up_late', label: "Up Late", icon: "fa-clock", category: "sleep", score: -1.5 },
 
     // MINDSET
-    { label: "Stressed", icon: "fa-face-frown", text: "Felt stressed/anxious 😰", category: "mindset" },
-    { label: "Procrastinated", icon: "fa-hourglass-end", text: "Procrastinated all day ⏰", category: "mindset" }
+    { id: 'stressed', label: "Stressed", icon: "fa-face-frown", category: "mindset", score: -1.5 },
+    { id: 'procrastinated', label: "Procrastinated", icon: "fa-hourglass-end", category: "mindset", score: -1.0 }
 ];
 
 const ACHIEVEMENTS = [
@@ -1160,6 +1048,15 @@ const ViewEntry = () => {
     state.today = getCurrentDate();
 
     const existingEntry = state.history.find(e => e.date === state.today);
+
+    // Load selected chips from history if they exist
+    if (existingEntry && existingEntry.selectedChips) {
+        state.selectedChips = [...existingEntry.selectedChips];
+    } else if (existingEntry && !existingEntry.selectedChips) {
+        // Legacy entry without chips - keep empty or maybe try to map? (skip for now)
+        state.selectedChips = [];
+    }
+
     const lvl = getLevelInfo();
 
     const statusHeader = existingEntry ?
@@ -1167,18 +1064,19 @@ const ViewEntry = () => {
         :
         `<p style="color:var(--accent); font-weight:bold;"><i class="fa-solid fa-lock-open"></i> XP Unlocked</p>`;
 
-    const textAreaVal = existingEntry ? existingEntry.text : '';
-    const placeHolder = existingEntry ? "" : "Tap chips above or type here... Example: I hiked for 2 hours...";
+    const placeHolder = "Tap chips to select what you did today...";
 
     const entryContent = `
         ${statusHeader}
         
+        <p style="color:var(--text-muted); margin-bottom:16px;">${placeHolder}</p>
+
         <!-- Smart Chips - Organized by Category -->
         <div style="margin-bottom: 16px;">
             <h4 style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; margin-bottom: 8px; font-weight: 600;">🍎 Food & Nutrition</h4>
             <div class="chip-container">
-                ${SMART_CHIPS.filter(c => c.category === 'food').map(chip => `
-                    <div class="chip" data-text="${chip.text}">
+                ${SMART_CHIPS.filter(c => c.category === 'food' || c.category === 'hydration').map(chip => `
+                    <div class="chip ${state.selectedChips.includes(chip.id) ? 'selected' : ''}" data-id="${chip.id}">
                         <i class="fa-solid ${chip.icon}"></i> ${chip.label}
                     </div>
                 `).join('')}
@@ -1189,7 +1087,7 @@ const ViewEntry = () => {
             <h4 style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; margin-bottom: 8px; font-weight: 600;">💪 Exercise & Activity</h4>
             <div class="chip-container">
                 ${SMART_CHIPS.filter(c => c.category === 'active').map(chip => `
-                    <div class="chip" data-text="${chip.text}">
+                    <div class="chip ${state.selectedChips.includes(chip.id) ? 'selected' : ''}" data-id="${chip.id}">
                         <i class="fa-solid ${chip.icon}"></i> ${chip.label}
                     </div>
                 `).join('')}
@@ -1200,7 +1098,7 @@ const ViewEntry = () => {
             <h4 style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; margin-bottom: 8px; font-weight: 600;">😴 Sleep & Rest</h4>
             <div class="chip-container">
                 ${SMART_CHIPS.filter(c => c.category === 'sleep').map(chip => `
-                    <div class="chip" data-text="${chip.text}">
+                    <div class="chip ${state.selectedChips.includes(chip.id) ? 'selected' : ''}" data-id="${chip.id}">
                         <i class="fa-solid ${chip.icon}"></i> ${chip.label}
                     </div>
                 `).join('')}
@@ -1211,7 +1109,7 @@ const ViewEntry = () => {
             <h4 style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; margin-bottom: 8px; font-weight: 600;">📚 Learning & Productivity</h4>
             <div class="chip-container">
                 ${SMART_CHIPS.filter(c => c.category === 'knowledge').map(chip => `
-                    <div class="chip" data-text="${chip.text}">
+                    <div class="chip ${state.selectedChips.includes(chip.id) ? 'selected' : ''}" data-id="${chip.id}">
                         <i class="fa-solid ${chip.icon}"></i> ${chip.label}
                     </div>
                 `).join('')}
@@ -1222,7 +1120,7 @@ const ViewEntry = () => {
             <h4 style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; margin-bottom: 8px; font-weight: 600;">❤️ Mindset & Social</h4>
             <div class="chip-container">
                 ${SMART_CHIPS.filter(c => c.category === 'mindset').map(chip => `
-                    <div class="chip" data-text="${chip.text}">
+                    <div class="chip ${state.selectedChips.includes(chip.id) ? 'selected' : ''}" data-id="${chip.id}">
                         <i class="fa-solid ${chip.icon}"></i> ${chip.label}
                     </div>
                 `).join('')}
@@ -1233,7 +1131,7 @@ const ViewEntry = () => {
             <h4 style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; margin-bottom: 8px; font-weight: 600;">📵 Screen Time</h4>
             <div class="chip-container">
                 ${SMART_CHIPS.filter(c => c.category === 'screen').map(chip => `
-                    <div class="chip" data-text="${chip.text}">
+                    <div class="chip ${state.selectedChips.includes(chip.id) ? 'selected' : ''}" data-id="${chip.id}">
                         <i class="fa-solid ${chip.icon}"></i> ${chip.label}
                     </div>
                 `).join('')}
@@ -1245,14 +1143,12 @@ const ViewEntry = () => {
             <h4 style="color: var(--danger); font-size: 12px; text-transform: uppercase; margin-bottom: 8px; font-weight: 600;">⚠️ Things to Avoid</h4>
             <div class="chip-container">
                 ${NEGATIVE_CHIPS.map(chip => `
-                    <div class="chip negative" data-text="${chip.text}">
+                    <div class="chip negative ${state.selectedChips.includes(chip.id) ? 'selected' : ''}" data-id="${chip.id}">
                         <i class="fa-solid ${chip.icon}"></i> ${chip.label}
                     </div>
                 `).join('')}
             </div>
         </div>
-
-        <textarea id="journal-input" placeholder="${placeHolder}">${textAreaVal}</textarea>
     `;
 
     return `
@@ -1805,38 +1701,20 @@ function init() {
             render('entry');
         }
 
-        // Handle Chip Clicks
+        // Handle Chip Clicks - TOGGLE SELECTION
         if (e.target.closest('.chip')) {
-            e.preventDefault(); // Prevent textarea focus
             if (window.soundEngine) window.soundEngine.playClick();
             const chip = e.target.closest('.chip');
-            const textToAdd = chip.getAttribute('data-text');
-            const textarea = document.getElementById('journal-input');
+            const chipId = chip.getAttribute('data-id');
 
-            if (textarea) {
-                // Check if chip is already selected
-                if (chip.classList.contains('selected')) {
-                    // Unselect: remove the chip and its text
-                    chip.classList.remove('selected');
-
-                    // Remove the text from textarea
-                    const currentVal = textarea.value;
-                    // Remove the exact text (with space variations)
-                    let newVal = currentVal.replace(textToAdd + ' ', '');
-                    if (newVal === currentVal) {
-                        newVal = currentVal.replace(' ' + textToAdd, '');
-                    }
-                    if (newVal === currentVal) {
-                        newVal = currentVal.replace(textToAdd, '');
-                    }
-                    textarea.value = newVal.trim() + (newVal.trim() ? ' ' : '');
-                } else {
-                    // Select: add the chip and its text
-                    const currentVal = textarea.value;
-                    const prefix = currentVal.length > 0 && !currentVal.endsWith(' ') ? ' ' : '';
-                    textarea.value = currentVal + prefix + textToAdd + ' ';
-                    chip.classList.add('selected');
-                }
+            if (state.selectedChips.includes(chipId)) {
+                // Deselect
+                state.selectedChips = state.selectedChips.filter(id => id !== chipId);
+                chip.classList.remove('selected');
+            } else {
+                // Select
+                state.selectedChips.push(chipId);
+                chip.classList.add('selected');
             }
         }
 
@@ -1844,9 +1722,10 @@ function init() {
             // Update today's date to ensure it's current before saving
             state.today = getCurrentDate();
 
-            const text = document.getElementById('journal-input').value;
-            if (text.length < 2) { alert("Please write something!"); return; }
-            const result = analyzeEntry(text);
+            if (state.selectedChips.length === 0) { alert("Please select at least one chip!"); return; }
+
+            // USE NEW ANALYSIS
+            const result = analyzeChipSelection(); // no args needed, uses state.selectedChips
 
             const existingIndex = state.history.findIndex(e => e.date === state.today);
             const oldLevel = getLevelInfo().level; // Track level before adding XP
@@ -1859,7 +1738,8 @@ function init() {
                 state.history[existingIndex] = {
                     date: state.today,
                     result: result,
-                    text: text,
+                    text: "", // No text anymore
+                    selectedChips: [...state.selectedChips], // Save selected chips
                     lockedXP: xpToKeep,
                     timestamp: new Date().getTime()
                 };
@@ -1868,7 +1748,8 @@ function init() {
                 state.history.push({
                     date: state.today,
                     result: result,
-                    text: text,
+                    text: "", // No text
+                    selectedChips: [...state.selectedChips], // Save selected chips
                     lockedXP: result.overall,
                     timestamp: new Date().getTime()
                 });
@@ -1884,7 +1765,7 @@ function init() {
                 setTimeout(() => showStreakCelebration(streak), 1000);
             }
 
-            // Save to localStorage with error handling (important for mobile browsers)
+            // Save to localStorage
             if (!safeSave('health_history', state.history)) {
                 alert('⚠️ Warning: Your entry may not be saved. Please check your browser storage settings.');
             }
@@ -1896,9 +1777,6 @@ function init() {
 
             // Success sound if doing well
             if (result.overall >= 70 && window.soundEngine) window.soundEngine.playSuccess();
-
-            // Clear selected chips after submission
-            document.querySelectorAll('.chip.selected').forEach(chip => chip.classList.remove('selected'));
 
             render('dashboard', result);
         }
