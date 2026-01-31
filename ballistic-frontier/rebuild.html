@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ballistic Frontier</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        #shop-screen {
+            background: linear-gradient(135deg, #2c3e50, #000);
+            flex-direction: row;
+            gap: 20px;
+            color: #fff;
+        }
+
+        #shop-list {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .shop-card {
+            width: 100px;
+            height: 130px;
+            background: #fff;
+            color: #333;
+            border: 3px solid #777;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
+            padding: 5px;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .shop-card.locked {
+            filter: grayscale(1);
+            background: #ccc;
+        }
+
+        .shop-card.selected {
+            border-color: #f1c40f;
+            box-shadow: 0 0 10px #f1c40f;
+            transform: scale(1.05);
+        }
+
+        .shop-card.equipped::after {
+            content: 'E';
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #27ae60;
+            color: #fff;
+            font-weight: bold;
+            font-size: 0.8rem;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #fff;
+        }
+
+        #shop-details {
+            width: 300px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border: 2px solid #fff;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .gold-display {
+            font-size: 1.5rem;
+            color: #f1c40f;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+            text-shadow: 2px 2px 0 #000;
+        }
+
+        .btn-action {
+            padding: 15px;
+            font-family: inherit;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            color: #fff;
+        }
+
+        .btn-buy {
+            background: #f39c12;
+        }
+
+        .btn-equip {
+            background: #27ae60;
+        }
+
+        .btn-unequip {
+            background: #c0392b;
+        }
+
+        .btn-back {
+            background: #7f8c8d;
+            margin-top: auto;
+        }
+
+        #transition-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s;
+            z-index: 100;
+        }
+
+        .fade-active {
+            opacity: 1 !important;
+            pointer-events: auto !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="game-ui">
+        <div id="transition-overlay"></div>
+        <div id="main-menu" class="screen">
+            <h1>BALLISTIC FRONTIER</h1>
+            <p>TACTICAL DEFENSE PROTOCOL</p>
+            <div id="menu-gold" class="gold-display">GOLD: 0</div>
+            <div id="map-selection" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <button class="map-btn" data-map="desert">DESERT</button>
+                <button class="map-btn" data-map="arctic">ARCTIC</button>
+                <button class="map-btn" data-map="grassland">SECTOR 7</button>
+            </div>
+            <button id="btn-open-shop" style="background: #8e44ad; color: #fff;">ARSENAL (SHOP)</button>
+        </div>
+        <div id="shop-screen" class="screen" style="display: none;">
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <h2 style="color:#fff; margin-bottom: 10px;">ARSENAL</h2>
+                <div id="shop-gold" class="gold-display">GOLD: 0</div>
+                <div id="shop-list"></div>
+            </div>
+            <div id="shop-details">
+                <h3 id="shop-name" style="margin: 0; color: #f1c40f;">SELECT ITEM</h3>
+                <p id="shop-desc" style="font-size: 0.9rem; color: #ccc;">Select a tower to view details.</p>
+                <div id="shop-stats" style="font-size: 0.8rem; line-height: 1.6;"></div>
+                <button id="shop-action-btn" class="btn-action btn-buy" style="display: none;">BUY</button>
+                <button id="shop-back-btn" class="btn-action btn-back">BACK TO MENU</button>
+            </div>
+        </div>
+        <div id="game-hud" style="display: none;">
+            <div class="stat-box"><span class="label">CASH:</span><span id="cash-display" class="value">$600</span>
+            </div>
+            <div class="stat-box"><span class="label">WAVE:</span><span id="wave-display" class="value">1</span></div>
+            <div class="stat-box"><span class="label">LIVES:</span><span id="lives-display" class="value">20</span>
+            </div>
+        </div>
+        <div id="tower-panel" style="display: none;"></div>
+        <div id="upgrade-panel"
+            style="display: none; position: absolute; bottom: 20px; right: 20px; background: rgba(255, 255, 255, 0.95); padding: 15px; border: 4px solid #000; border-radius: 10px; flex-direction: column; gap: 8px; width: 220px; z-index: 20; pointer-events: auto;">
+            <h3 style="margin: 0; text-align: center; color: #333;">OPTIONS</h3>
+            <div style="font-size: 0.9rem; color: #555; text-align: center;">Lvl: <span id="info-lvl"
+                    style="font-weight: bold; color: #000;">1</span> | Dmg: <span id="info-dmg"
+                    style="font-weight: bold; color: #000;">10</span></div>
+            <div
+                style="display: flex; align-items: center; justify-content: space-between; background: #eee; padding: 5px; border-radius: 5px; border: 1px solid #ccc;">
+                <span style="font-size: 0.8rem; font-weight: bold; color: #555;">AIM:</span>
+                <span id="target-mode" style="font-size: 0.8rem; font-weight: bold; color: #000;">FIRST</span>
+                <button id="btn-target-switch"
+                    style="padding: 2px 8px; margin: 0; font-size: 1rem; border: 1px solid #777; background: #fff; cursor: pointer;">&#8594;</button>
+            </div>
+            <button id="btn-upgrade"
+                style="width: 100%; margin: 5px 0 0 0; padding: 10px; background: #3498db; color: #fff; border: 2px solid #2980b9; cursor: pointer;">UPGRADE</button>
+            <button id="btn-sell"
+                style="width: 100%; margin: 5px 0 0 0; padding: 10px; background: #e74c3c; color: #fff; border: 2px solid #c0392b; cursor: pointer;">SELL</button>
+            <button id="btn-close-panel"
+                style="width: 100%; margin: 5px 0 0 0; padding: 5px; background: #ddd; border: 1px solid #999; cursor: pointer;">CLOSE</button>
+        </div>
+        <button id="start-wave-btn"
+            style="position: absolute; top: 100px; right: 20px; z-index: 20; background: #27ae60; color: #fff; display: none; pointer-events: auto; border: 3px solid #fff; border-radius: 50px; font-weight: bold; padding: 10px 30px; box-shadow: 0 4px 0 #1e8449; transition: transform 0.1s; cursor: pointer;">START
+            WAVE</button>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <script>

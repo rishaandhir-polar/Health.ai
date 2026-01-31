@@ -784,11 +784,12 @@ function updateWeeklyQuests(result) {
         }
     }
 
-    // 4. Social Butterfly - mention friends/family 5 times (can count multiple per day)
-    if (!quests.social_butterfly.completed && result.mentions.mindset) {
-        const text = document.getElementById('journal-input').value.toLowerCase();
-        if (text.includes('friend') || text.includes('family')) {
+    // 4. Social Butterfly - mention friends/family (use chips, count once per day)
+    if (!quests.social_butterfly.completed) {
+        const hasSocialChip = state.selectedChips.includes('friends') || state.selectedChips.includes('family');
+        if (hasSocialChip && !quests.social_butterfly.lastCountedDates.includes(today)) {
             quests.social_butterfly.progress++;
+            quests.social_butterfly.lastCountedDates.push(today);
             if (quests.social_butterfly.progress >= 5 && !quests.social_butterfly.xpAwarded) {
                 completeQuest('social_butterfly');
             }
@@ -1719,66 +1720,71 @@ function init() {
         }
 
         if (e.target.id === 'btn-analyze') {
-            // Update today's date to ensure it's current before saving
-            state.today = getCurrentDate();
+            try {
+                // Update today's date to ensure it's current before saving
+                state.today = getCurrentDate();
 
-            if (state.selectedChips.length === 0) { alert("Please select at least one chip!"); return; }
+                if (state.selectedChips.length === 0) { alert("Please select at least one chip!"); return; }
 
-            // USE NEW ANALYSIS
-            const result = analyzeChipSelection(); // no args needed, uses state.selectedChips
+                // USE NEW ANALYSIS
+                const result = analyzeChipSelection(); // no args needed, uses state.selectedChips
 
-            const existingIndex = state.history.findIndex(e => e.date === state.today);
-            const oldLevel = getLevelInfo().level; // Track level before adding XP
+                const existingIndex = state.history.findIndex(e => e.date === state.today);
+                const oldLevel = getLevelInfo().level; // Track level before adding XP
 
-            if (existingIndex >= 0) {
-                // UPDATE: Keep old lockedXP if it exists
-                const oldEntry = state.history[existingIndex];
-                const xpToKeep = oldEntry.lockedXP !== undefined ? oldEntry.lockedXP : oldEntry.result.overall;
+                if (existingIndex >= 0) {
+                    // UPDATE: Keep old lockedXP if it exists
+                    const oldEntry = state.history[existingIndex];
+                    const xpToKeep = oldEntry.lockedXP !== undefined ? oldEntry.lockedXP : oldEntry.result.overall;
 
-                state.history[existingIndex] = {
-                    date: state.today,
-                    result: result,
-                    text: "", // No text anymore
-                    selectedChips: [...state.selectedChips], // Save selected chips
-                    lockedXP: xpToKeep,
-                    timestamp: new Date().getTime()
-                };
-            } else {
-                // NEW: Lock XP now
-                state.history.push({
-                    date: state.today,
-                    result: result,
-                    text: "", // No text
-                    selectedChips: [...state.selectedChips], // Save selected chips
-                    lockedXP: result.overall,
-                    timestamp: new Date().getTime()
-                });
+                    state.history[existingIndex] = {
+                        date: state.today,
+                        result: result,
+                        text: "", // No text anymore
+                        selectedChips: [...state.selectedChips], // Save selected chips
+                        lockedXP: xpToKeep,
+                        timestamp: new Date().getTime()
+                    };
+                } else {
+                    // NEW: Lock XP now
+                    state.history.push({
+                        date: state.today,
+                        result: result,
+                        text: "", // No text
+                        selectedChips: [...state.selectedChips], // Save selected chips
+                        lockedXP: result.overall,
+                        timestamp: new Date().getTime()
+                    });
 
-                // Check for level up
-                const newLevel = getLevelInfo().level;
-                if (newLevel > oldLevel) {
-                    setTimeout(() => showLevelUpAnimation(newLevel), 500);
+                    // Check for level up
+                    const newLevel = getLevelInfo().level;
+                    if (newLevel > oldLevel) {
+                        setTimeout(() => showLevelUpAnimation(newLevel), 500);
+                    }
+
+                    // Check for streak celebrations
+                    const streak = calculateStreak();
+                    setTimeout(() => showStreakCelebration(streak), 1000);
                 }
 
-                // Check for streak celebrations
-                const streak = calculateStreak();
-                setTimeout(() => showStreakCelebration(streak), 1000);
+                // Save to localStorage
+                if (!safeSave('health_history', state.history)) {
+                    alert('⚠️ Warning: Your entry may not be saved. Please check your browser storage settings.');
+                }
+
+                checkAchievements(result);
+
+                // Update weekly quests
+                updateWeeklyQuests(result);
+
+                // Success sound if doing well
+                if (result.overall >= 70 && window.soundEngine) window.soundEngine.playSuccess();
+
+                render('dashboard', result);
+            } catch (err) {
+                console.error("ANALYSIS ERROR:", err);
+                alert("Oops! Something went wrong while analyzing your day. Please try again or refresh the page.");
             }
-
-            // Save to localStorage
-            if (!safeSave('health_history', state.history)) {
-                alert('⚠️ Warning: Your entry may not be saved. Please check your browser storage settings.');
-            }
-
-            checkAchievements(result);
-
-            // Update weekly quests
-            updateWeeklyQuests(result);
-
-            // Success sound if doing well
-            if (result.overall >= 70 && window.soundEngine) window.soundEngine.playSuccess();
-
-            render('dashboard', result);
         }
         if (e.target.id === 'btn-home') {
             // Clear selected chips when going back to entry

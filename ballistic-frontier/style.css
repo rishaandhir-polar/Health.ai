@@ -1,0 +1,328 @@
+:root {
+    --bg-color: #333;
+    --ui-bg: #fff;
+    --ui-border: #8f563b;
+    /* Wood/Earth tone */
+    --text: #333;
+    --accent: #ffae00;
+    --danger: #d9534f;
+
+    /* Map Themes */
+    --desert-bg: #e6c288;
+    --desert-path: #d4a860;
+
+    --grass-bg: #88c96c;
+    --grass-path: #d4b483;
+    /* Dirt path */
+
+    --snow-bg: #e8f4f8;
+    --snow-path: #b8dbe6;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-color);
+    color: var(--text);
+    font-family: 'Verdana', sans-serif;
+    /* Cleaner font */
+    overflow: hidden;
+    user-select: none;
+}
+
+#gameCanvas {
+    display: block;
+    width: 100vw;
+    height: 100vh;
+}
+
+#game-ui {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+.screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.6);
+    pointer-events: auto;
+    z-index: 10;
+}
+
+#main-menu {
+    background: linear-gradient(135deg, #6dd5fa, #2980b9);
+    /* Sky blue gradient */
+}
+
+h1 {
+    font-size: 4rem;
+    color: #fff;
+    text-shadow: 3px 3px 0px #000;
+    margin-bottom: 0.5rem;
+    font-family: 'Arial Black', sans-serif;
+    -webkit-text-stroke: 2px #000;
+}
+
+p {
+    font-size: 1.5rem;
+    color: #fff;
+    margin-bottom: 3rem;
+    font-weight: bold;
+    text-shadow: 1px 1px 2px #000;
+}
+
+button {
+    background: #fff;
+    border: 4px solid #000;
+    color: #333;
+    padding: 15px 40px;
+    font-family: 'Arial Black', sans-serif;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: transform 0.1s;
+    margin: 10px;
+    border-radius: 10px;
+    box-shadow: 0 6px 0 #000;
+}
+
+button:active {
+    transform: translateY(4px);
+    box-shadow: 0 2px 0 #000;
+}
+
+button:hover {
+    background: #f0f0f0;
+}
+
+/* Map specific buttons */
+button[data-map="desert"] {
+    background: #ffd700;
+}
+
+button[data-map="arctic"] {
+    background: #00d2ff;
+}
+
+button[data-map="grassland"] {
+    background: #76c720;
+}
+
+
+/* IN GAME HUD */
+#game-hud {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 70px;
+    background: rgba(255, 255, 255, 0.9);
+    border-bottom: 4px solid #000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 50px;
+    pointer-events: none;
+}
+
+.stat-box {
+    font-size: 1.5rem;
+    font-weight: bold;
+    background: #eee;
+    padding: 5px 15px;
+    border: 2px solid #000;
+    border-radius: 5px;
+    box-shadow: 2px 2px 0 rgba(0, 0, 0, 0.2);
+}
+
+.label {
+    color: #555;
+    margin-right: 5px;
+    font-size: 1rem;
+    text-transform: uppercase;
+}
+
+.value {
+    color: #000;
+}
+
+#cash-display {
+    color: #2ecc71;
+}
+
+/* Money Green */
+#lives-display {
+    color: #e74c3c;
+}
+
+/* Heart Red */
+
+/* TOWER PANEL */
+#tower-panel {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 10px;
+    border: 4px solid #000;
+    border-radius: 10px;
+    pointer-events: auto;
+}
+
+.tower-card {
+    width: 90px;
+    height: 100px;
+    background: #fff;
+    border: 3px solid #ccc;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px;
+    cursor: pointer;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.tower-card:hover {
+    border-color: #888;
+    transform: translateY(-2px);
+}
+
+.tower-card.selected {
+    border-color: #000;
+    /* Selected border */
+    background: #ffeb3b;
+    /* Highlight yellow */
+    transform: scale(1.05);
+    box-shadow: 0 4px 0 rgba(0, 0, 0, 0.3);
+}
+
+.tower-icon {
+    width: 50px;
+    height: 50px;
+    margin-top: 5px;
+    position: relative;
+}
+
+/* Cartoony Icon Styles */
+.turret-icon::after {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 30px;
+    height: 30px;
+    background: #777;
+    border: 2px solid #000;
+    border-radius: 50%;
+}
+
+.turret-icon::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 22px;
+    width: 6px;
+    height: 40px;
+    background: #000;
+}
+
+.sniper-icon::after {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 20px;
+    width: 10px;
+    height: 45px;
+    background: #555;
+    border: 2px solid #000;
+}
+
+.cannon-icon::after {
+    content: '';
+    position: absolute;
+    top: 15px;
+    left: 10px;
+    width: 30px;
+    height: 30px;
+    background: #333;
+    border: 2px solid #000;
+}
+
+.ice-icon::after {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 30px;
+    height: 30px;
+    background: #00ACC1;
+    border: 2px solid #000;
+}
+
+.ice-icon::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 20px;
+    width: 10px;
+    height: 40px;
+    background: #80DEEA;
+    z-index: 1;
+}
+
+.grenade-icon::after {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    width: 30px;
+    height: 30px;
+    background: #4CAF50;
+    border: 2px solid #000;
+    border-radius: 50%;
+}
+
+.grenade-icon::before {
+    content: '';
+    position: absolute;
+    top: 10px;
+    left: 22px;
+    width: 8px;
+    height: 15px;
+    background: #1B5E20;
+    z-index: 1;
+}
+
+.tower-info {
+    text-align: center;
+    width: 100%;
+}
+
+.name {
+    font-size: 0.7rem;
+    font-weight: bold;
+    color: #555;
+    display: block;
+}
+
+.cost {
+    font-size: 0.9rem;
+    color: #27ae60;
+    font-weight: bold;
+}
