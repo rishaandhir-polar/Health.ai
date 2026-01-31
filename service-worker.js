@@ -1,7 +1,7 @@
 // Health AI Service Worker
-// Version 1.0.0
+// Version 1.1.0 (Auto-Update Enabled)
 
-const CACHE_NAME = 'health-ai-v1';
+const CACHE_NAME = 'health-ai-v2'; // Bumped version to force update
 const urlsToCache = [
     './',
     './index.html',
@@ -19,26 +19,21 @@ const urlsToCache = [
 
 // Install event - cache all resources
 self.addEventListener('install', (event) => {
-    console.log('[Service Worker] Installing...');
+    console.log('[Service Worker] Installing v2...');
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then((cache) => {
-                console.log('[Service Worker] Caching app shell');
                 return cache.addAll(urlsToCache);
             })
             .then(() => {
-                console.log('[Service Worker] Installed successfully');
-                return self.skipWaiting();
-            })
-            .catch((error) => {
-                console.error('[Service Worker] Installation failed:', error);
+                return self.skipWaiting(); // Force the waiting service worker to become the active one
             })
     );
 });
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-    console.log('[Service Worker] Activating...');
+    console.log('[Service Worker] Activating v2...');
     event.waitUntil(
         caches.keys().then((cacheNames) => {
             return Promise.all(
@@ -50,45 +45,38 @@ self.addEventListener('activate', (event) => {
                 })
             );
         }).then(() => {
-            console.log('[Service Worker] Activated successfully');
-            return self.clients.claim();
+            return self.clients.claim(); // Take control of all clients immediately
         })
     );
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - STALE-WHILE-REVALIDATE Strategy
+// 1. Serve from cache immediately
+// 2. Fetch from network in background
+// 3. Update cache with fresh version
 self.addEventListener('fetch', (event) => {
+    // Skip non-GET requests and external chrome extensions
+    if (event.request.method !== 'GET' || !event.request.url.startsWith(self.location.origin) && !event.request.url.startsWith('https://fonts') && !event.request.url.startsWith('https://cdnjs')) {
+        return;
+    }
+
     event.respondWith(
-        caches.match(event.request)
-            .then((response) => {
-                // Cache hit - return response
-                if (response) {
-                    return response;
-                }
-
-                // Clone the request
-                const fetchRequest = event.request.clone();
-
-                return fetch(fetchRequest).then((response) => {
-                    // Check if valid response
-                    if (!response || response.status !== 200 || response.type !== 'basic') {
-                        return response;
+        caches.open(CACHE_NAME).then((cache) => {
+            return cache.match(event.request).then((cachedResponse) => {
+                const fetchedResponse = fetch(event.request).then((networkResponse) => {
+                    // Update cache with the new response
+                    if (networkResponse && networkResponse.status === 200) {
+                        cache.put(event.request, networkResponse.clone());
                     }
-
-                    // Clone the response
-                    const responseToCache = response.clone();
-
-                    caches.open(CACHE_NAME)
-                        .then((cache) => {
-                            cache.put(event.request, responseToCache);
-                        });
-
-                    return response;
+                    return networkResponse;
                 }).catch(() => {
-                    // Network failed, return offline page if available
-                    return caches.match('./index.html');
+                    // If network fails, we already have the cache (if it exists)
                 });
-            })
+
+                // Return cached response immediately, or wait for network if not in cache
+                return cachedResponse || fetchedResponse;
+            });
+        })
     );
 });
 

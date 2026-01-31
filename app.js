@@ -1848,16 +1848,41 @@ function init() {
 
 // --- PWA SERVICE WORKER REGISTRATION ---
 let deferredPrompt;
+let refreshing = false;
 
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./service-worker.js')
             .then((registration) => {
                 console.log('✅ Service Worker registered successfully:', registration.scope);
+
+                // Check for updates periodically
+                registration.update();
+
+                // Handle updates
+                registration.onupdatefound = () => {
+                    const installingWorker = registration.installing;
+                    installingWorker.onstatechange = () => {
+                        if (installingWorker.state === 'installed') {
+                            if (navigator.serviceWorker.controller) {
+                                // New content is available; please refresh.
+                                console.log('💡 New content available, auto-refreshing...');
+                                // The skipWaiting() in the service worker will trigger controllerchange
+                            }
+                        }
+                    };
+                };
             })
             .catch((error) => {
                 console.log('❌ Service Worker registration failed:', error);
             });
+    });
+
+    // The event listener that actually reloads the page
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        window.location.reload();
     });
 }
 
