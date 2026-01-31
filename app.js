@@ -1053,8 +1053,8 @@ const ViewEntry = () => {
     // Load selected chips from history if they exist
     if (existingEntry && existingEntry.selectedChips) {
         state.selectedChips = [...existingEntry.selectedChips];
-    } else if (existingEntry && !existingEntry.selectedChips) {
-        // Legacy entry without chips - keep empty or maybe try to map? (skip for now)
+    } else {
+        // Clear selection for a new entry or if no chips saved
         state.selectedChips = [];
     }
 
@@ -1787,10 +1787,6 @@ function init() {
             }
         }
         if (e.target.id === 'btn-home') {
-            // Clear selected chips when going back to entry
-            setTimeout(() => {
-                document.querySelectorAll('.chip.selected').forEach(chip => chip.classList.remove('selected'));
-            }, 100);
             render('entry');
         }
         if (e.target.id === 'btn-history') render('history');
