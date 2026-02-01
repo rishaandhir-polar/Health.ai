@@ -1190,14 +1190,14 @@ const ViewEntry = () => {
             <button class="btn" id="btn-analyze" style="flex:2;">${existingEntry ? 'Update Entry (XP Locked 🔒)' : 'Analyze Day'}</button>
             <button class="btn" id="btn-meditate-view" style="flex:1; background-color:var(--success);"><i class="fa-solid fa-spa"></i></button>
         </div>
-        <div style="display:flex; gap:10px; margin-bottom:12px;">
-            <button class="btn" id="btn-history" style="flex:1; background-color:var(--bg-input); color:var(--text-main);">View History</button>
-            <button class="btn" id="btn-monthly" style="flex:1; background-color:var(--bg-input); color:var(--text-main);">📊 Monthly</button>
-            <button class="btn" id="btn-quests" style="flex:1; background-color:var(--bg-input); color:var(--text-main);">🏆 Quests</button>
-            <button class="btn" id="btn-arcade" style="flex:1; background-color:var(--bg-input); color:var(--text-main);">🕹️ Arcade</button>
+        <div class="nav-grid">
+            <button class="btn" id="btn-history" style="background-color:var(--bg-input); color:var(--text-main);"><i class="fa-solid fa-clock-rotate-left"></i> History</button>
+            <button class="btn" id="btn-monthly" style="background-color:var(--bg-input); color:var(--text-main);"><i class="fa-solid fa-chart-line"></i> Monthly</button>
+            <button class="btn" id="btn-quests" style="background-color:var(--bg-input); color:var(--text-main);"><i class="fa-solid fa-trophy"></i> Quests</button>
+            <button class="btn" id="btn-arcade" style="background-color:var(--bg-input); color:var(--text-main);"><i class="fa-solid fa-gamepad"></i> Arcade</button>
         </div>
-        ${isMobile() ? `<button class="btn" id="btn-steps" style="width:100%; height:44px; margin-top:0px; background-color:var(--accent); display:flex; align-items:center; justify-content:center; gap:8px;">
-            <i class="fa-solid fa-person-walking"></i> Step Tracker
+        ${isMobile() ? `<button class="btn" id="btn-steps" style="width:100%; min-height:60px; margin-top:8px; background-color:var(--accent); display:flex; align-items:center; justify-content:center; gap:12px; font-size:18px;">
+            <i class="fa-solid fa-person-walking"></i> Open Step Tracker
         </button>` : ''}
     </div>
     `;
