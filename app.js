@@ -1,5 +1,7 @@
-// --- AI LOGIC ---
 // Text analysis replaced by Chip-Based Scoring
+function isMobile() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 0);
+}
 
 // NEW: Chip-based analysis - no text parsing!
 function analyzeChipSelection() {
@@ -385,7 +387,8 @@ const state = {
         totalBonusXP: 0
     }),
     gamePlaytime: safeJSON('health_playtime', { date: getCurrentDate(), secondsLeft: 3600 }),
-    highScores: safeJSON('health_high_scores', { macroSorter: 0, zenFlow: 0 })
+    highScores: safeJSON('health_high_scores', { macroSorter: 0, zenFlow: 0 }),
+    steps: safeJSON('health_steps', { date: getCurrentDate(), count: 0 })
 };
 
 // MIGRATION: Add lastCountedDates to old quest data
@@ -1193,6 +1196,9 @@ const ViewEntry = () => {
             <button class="btn" id="btn-quests" style="flex:1; background-color:var(--bg-input); color:var(--text-main);">🏆 Quests</button>
             <button class="btn" id="btn-arcade" style="flex:1; background-color:var(--bg-input); color:var(--text-main);">🕹️ Arcade</button>
         </div>
+        ${isMobile() ? `<button class="btn" id="btn-steps" style="width:100%; height:44px; margin-top:0px; background-color:var(--accent); display:flex; align-items:center; justify-content:center; gap:8px;">
+            <i class="fa-solid fa-person-walking"></i> Step Tracker
+        </button>` : ''}
     </div>
     `;
 };
@@ -2040,7 +2046,115 @@ function endZenGame(reason) {
     }
 }
 
+const ViewStepTracker = () => {
+    checkStepsReset();
+    return `
+        <div class="screen active">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2>Step Tracker</h2>
+                <button id="btn-home" style="background:none; border:none; font-size:24px; color:var(--text-muted); cursor:pointer;">&times;</button>
+            </div>
+
+            <div class="card" style="text-align:center; padding:40px 20px;">
+                <div style="font-size:14px; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px;">Steps Today</div>
+                <div id="step-count-display" style="font-size:64px; font-weight:bold; color:var(--accent);">${state.steps.count}</div>
+                <p style="color:var(--text-muted); font-size:14px; margin-top:10px;">Keep your phone in your pocket while you walk!</p>
+            </div>
+
+            <div id="step-permission-banner" class="playtime-banner" style="display:none; background:rgba(59, 130, 246, 0.1); border-color:var(--accent);">
+                <p style="margin:0 0 10px 0; font-size:14px;">Motion sensors needed for tracking.</p>
+                <button class="btn" id="btn-grant-motion" style="padding:8px 16px; font-size:14px;">Enable Sensors</button>
+            </div>
+
+            <button class="btn" id="btn-home" style="margin-top:20px;">Back to Journal</button>
+        </div>
+    `;
+};
+
+function checkStepsReset() {
+    const today = getCurrentDate();
+    if (state.steps.date !== today) {
+        state.steps = { date: today, count: 0 };
+        safeSave('health_steps', state.steps);
+    }
+}
+
+let isTrackingSteps = false;
+let lastAccel = { x: 0, y: 0, z: 0 };
+let stepThreshold = 12; // Adjusted threshold for step detection
+let stepCooldown = 300; // ms
+let lastStepTime = 0;
+
+function initStepTracking() {
+    if (isTrackingSteps) return;
+
+    const requestPermission = async () => {
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+            try {
+                const response = await DeviceMotionEvent.requestPermission();
+                if (response === 'granted') {
+                    startMotionListener();
+                } else {
+                    alert("Permission denied. Steps cannot be tracked.");
+                }
+            } catch (err) {
+                console.error("Step permission error:", err);
+            }
+        } else {
+            // Non-iOS or older browser
+            startMotionListener();
+        }
+    };
+
+    const startMotionListener = () => {
+        isTrackingSteps = true;
+        window.addEventListener('devicemotion', (event) => {
+            const accel = event.accelerationIncludingGravity;
+            if (!accel) return;
+
+            // Calculate magnitude of acceleration vector
+            const magnitude = Math.sqrt(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z);
+
+            const now = Date.now();
+            if (magnitude > stepThreshold && (now - lastStepTime) > stepCooldown) {
+                state.steps.count++;
+                lastStepTime = now;
+
+                // Update UI if on steps screen
+                const display = document.getElementById('step-count-display');
+                if (display) {
+                    display.innerText = state.steps.count;
+                    display.style.transform = 'scale(1.1)';
+                    setTimeout(() => display.style.transform = 'scale(1)', 100);
+                }
+
+                // Save occasionally
+                if (state.steps.count % 5 === 0) {
+                    safeSave('health_steps', state.steps);
+                }
+            }
+        });
+    };
+
+    // Show permission button if iOS
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+        const banner = document.getElementById('step-permission-banner');
+        if (banner) banner.style.display = 'block';
+
+        const grantBtn = document.getElementById('btn-grant-motion');
+        if (grantBtn) {
+            grantBtn.onclick = () => {
+                requestPermission();
+                banner.style.display = 'none';
+            };
+        }
+    } else {
+        startMotionListener();
+    }
+}
+
 function applyTheme(themeName) {
+
 
 
     document.body.className = themeName;
@@ -2061,6 +2175,10 @@ function render(viewName, data = null) {
     else if (viewName === 'arcade') app.innerHTML = ViewArcade(); // NEW
     else if (viewName === 'macroSorter') app.innerHTML = ViewMacroSorter(); // NEW
     else if (viewName === 'zenFlow') app.innerHTML = ViewZenFlow(); // NEW
+    else if (viewName === 'steps') {
+        app.innerHTML = ViewStepTracker();
+        initStepTracking();
+    }
 }
 
 function startBreathingCycle() {
@@ -2263,6 +2381,7 @@ function init() {
         if (e.target.id === 'btn-monthly') render('monthly'); // NEW
         if (e.target.id === 'btn-quests') render('quests'); // NEW
         if (e.target.id === 'btn-arcade') render('arcade'); // NEW
+        if (e.target.id === 'btn-steps') render('steps'); // NEW
 
         if (e.target.closest('#launch-macro-sorter')) {
             if (state.gamePlaytime.secondsLeft > 0) render('macroSorter');
