@@ -103,7 +103,8 @@ body {
 /* --- COMPONENTS --- */
 .screen {
     flex: 1;
-    padding: 24px 24px 100px 24px; /* Extra bottom padding for mobile scroll */
+    padding: 24px 24px 100px 24px;
+    /* Extra bottom padding for mobile scroll */
     display: none;
     /* Hidden by default */
     animation: fadeIn 0.4s ease;
@@ -147,7 +148,8 @@ p {
     align-items: center;
     justify-content: center;
     width: 100%;
-    min-height: 54px; /* Taller touch target */
+    min-height: 54px;
+    /* Taller touch target */
     padding: 12px 20px;
     border: none;
     border-radius: var(--radius-md);
@@ -320,6 +322,24 @@ textarea:focus {
 
 .nav-grid .btn i {
     font-size: 20px;
+}
+
+.step-bump {
+    animation: stepBump 0.2s ease-out;
+}
+
+@keyframes stepBump {
+    0% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.15);
+    }
+
+    100% {
+        transform: scale(1);
+    }
 }
 
 .score-big {
@@ -750,7 +770,7 @@ body.theme-tan .screen.active.meditation-theme {
 .game-card:hover {
     border-color: var(--accent);
     transform: translateY(-4px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
 }
 
 .game-icon {
@@ -814,8 +834,8 @@ body.theme-tan .screen.active.meditation-theme {
 .bucket {
     width: 45%;
     height: 100%;
-    background: rgba(255,255,255,0.1);
-    border: 2px dashed rgba(255,255,255,0.3);
+    background: rgba(255, 255, 255, 0.1);
+    border: 2px dashed rgba(255, 255, 255, 0.3);
     border-radius: 10px 10px 0 0;
     display: flex;
     flex-direction: column;
@@ -826,8 +846,15 @@ body.theme-tan .screen.active.meditation-theme {
     color: white;
 }
 
-.bucket.fuel { background: rgba(52, 211, 153, 0.2); border-color: var(--success); }
-.bucket.treat { background: rgba(248, 113, 113, 0.2); border-color: var(--danger); }
+.bucket.fuel {
+    background: rgba(52, 211, 153, 0.2);
+    border-color: var(--success);
+}
+
+.bucket.treat {
+    background: rgba(248, 113, 113, 0.2);
+    border-color: var(--danger);
+}
 
 /* --- ZEN FLOW --- */
 #zen-canvas {
@@ -842,7 +869,7 @@ body.theme-tan .screen.active.meditation-theme {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.8);
+    background: rgba(0, 0, 0, 0.8);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -876,6 +903,13 @@ body.theme-tan .screen.active.meditation-theme {
 }
 
 @keyframes bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-5px); }
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-5px);
+    }
 }

@@ -2056,8 +2056,11 @@ const ViewStepTracker = () => {
             </div>
 
             <div class="card" style="text-align:center; padding:40px 20px;">
+                <div id="step-status-indicator" style="font-size:12px; font-weight:bold; color:var(--text-muted); margin-bottom:12px;">
+                    <i class="fa-solid fa-pause"></i> STANDING BY
+                </div>
                 <div style="font-size:14px; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px;">Steps Today</div>
-                <div id="step-count-display" style="font-size:64px; font-weight:bold; color:var(--accent);">${state.steps.count}</div>
+                <div id="step-count-display" style="font-size:64px; font-weight:bold; color:var(--accent); transition: transform 0.1s, color 0.3s;">${state.steps.count}</div>
                 <p style="color:var(--text-muted); font-size:14px; margin-top:10px;">Keep your phone in your pocket while you walk!</p>
             </div>
 
@@ -2080,10 +2083,21 @@ function checkStepsReset() {
 }
 
 let isTrackingSteps = false;
-let lastAccel = { x: 0, y: 0, z: 0 };
-let stepThreshold = 12; // Adjusted threshold for step detection
-let stepCooldown = 300; // ms
+let stepThreshold = 14.5; // Firmer threshold for actual steps
+let stepCooldown = 350; // ms between steps
+let minWalkingPace = 250; // Fastest human walking
+let maxWalkingPace = 1200; // Slowest human walking
 let lastStepTime = 0;
+
+// Rhythmic Detection
+let stepBuffer = 0;
+let minStepStreak = 6; // Need 6 rhythmic steps before counting starts
+let lastBufferTime = 0;
+let isWalking = false;
+
+// Low-Pass Filter (LPF) for smoothing
+let accelFilter = { x: 0, y: 0, z: 0 };
+let alpha = 0.2; // Smoothing factor (0.1 to 0.3 is good for steps)
 
 function initStepTracking() {
     if (isTrackingSteps) return;
@@ -2112,29 +2126,86 @@ function initStepTracking() {
             const accel = event.accelerationIncludingGravity;
             if (!accel) return;
 
-            // Calculate magnitude of acceleration vector
-            const magnitude = Math.sqrt(accel.x * accel.x + accel.y * accel.y + accel.z * accel.z);
+            // 1. Low-Pass Filter: Smooth out the signals
+            accelFilter.x = alpha * accel.x + (1 - alpha) * accelFilter.x;
+            accelFilter.y = alpha * accel.y + (1 - alpha) * accelFilter.y;
+            accelFilter.z = alpha * accel.z + (1 - alpha) * accelFilter.z;
+
+            // 2. Magnitude Calculation
+            const magnitude = Math.sqrt(
+                accelFilter.x * accelFilter.x +
+                accelFilter.y * accelFilter.y +
+                accelFilter.z * accelFilter.z
+            );
 
             const now = Date.now();
-            if (magnitude > stepThreshold && (now - lastStepTime) > stepCooldown) {
-                state.steps.count++;
-                lastStepTime = now;
+            const timeSinceLast = now - lastStepTime;
 
-                // Update UI if on steps screen
-                const display = document.getElementById('step-count-display');
-                if (display) {
-                    display.innerText = state.steps.count;
-                    display.style.transform = 'scale(1.1)';
-                    setTimeout(() => display.style.transform = 'scale(1)', 100);
-                }
+            // 3. Peak Detection with Threshold
+            if (magnitude > stepThreshold && timeSinceLast > stepCooldown) {
+                // Check if this step is part of a rhythmic sequence
+                if (timeSinceLast >= minWalkingPace && timeSinceLast <= maxWalkingPace) {
+                    stepBuffer++;
+                    lastStepTime = now;
 
-                // Save occasionally
-                if (state.steps.count % 5 === 0) {
-                    safeSave('health_steps', state.steps);
+                    // If we reach the streak, start counting for real
+                    if (stepBuffer >= minStepStreak) {
+                        if (!isWalking) {
+                            isWalking = true;
+                            updateStepUIStatus(true);
+                        }
+                        state.steps.count++;
+                        updateStepDisplay();
+                    }
+                } else {
+                    // Out of rhythm - reset buffer
+                    stepBuffer = 1;
+                    lastStepTime = now;
+                    isWalking = false;
+                    updateStepUIStatus(false);
                 }
+            }
+
+            // 4. Timeout: If no step for 2 seconds, reset buffer (user stopped walking)
+            if (now - lastStepTime > 2000 && stepBuffer > 0) {
+                stepBuffer = 0;
+                isWalking = false;
+                updateStepUIStatus(false);
             }
         });
     };
+
+    function updateStepDisplay() {
+        const display = document.getElementById('step-count-display');
+        if (display) {
+            display.innerText = state.steps.count;
+            display.classList.add('step-bump');
+            setTimeout(() => display.classList.remove('step-bump'), 100);
+        }
+
+        // Save occasionally
+        if (state.steps.count % 5 === 0) {
+            safeSave('health_steps', state.steps);
+        }
+    }
+
+    function updateStepUIStatus(active) {
+        const display = document.getElementById('step-count-display');
+        const statusBox = document.getElementById('step-status-indicator');
+        if (active) {
+            if (display) display.style.color = 'var(--success)';
+            if (statusBox) {
+                statusBox.innerHTML = '<i class="fa-solid fa-person-walking"></i> WALKING';
+                statusBox.style.color = 'var(--success)';
+            }
+        } else {
+            if (display) display.style.color = 'var(--accent)';
+            if (statusBox) {
+                statusBox.innerHTML = '<i class="fa-solid fa-pause"></i> STANDING BY';
+                statusBox.style.color = 'var(--text-muted)';
+            }
+        }
+    }
 
     // Show permission button if iOS
     if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
