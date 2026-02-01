@@ -1753,7 +1753,9 @@ function spawnItem() {
     container.appendChild(item);
 
     let top = -50;
-    const speed = 2 + (macroGame.score / 10);
+    // NERF: Slower speed scaling (was /10) and cap at max speed 12
+    const baseSpeed = 2;
+    const speed = Math.min(12, baseSpeed + (macroGame.score / 25));
 
     const fallInterval = setInterval(() => {
         if (!macroGame.active) {
@@ -1767,6 +1769,13 @@ function spawnItem() {
 
         if (top > 320) {
             // MISSED!
+            // Guard: If game already ended or lives gone, stop
+            if (!macroGame.active || macroGame.lives <= 0) {
+                clearInterval(fallInterval);
+                cleanup();
+                return;
+            }
+
             macroGame.lives--;
             updateMacroStats();
             clearInterval(fallInterval);
@@ -1801,7 +1810,7 @@ function spawnItem() {
                 macroGame.score++;
                 if (window.soundEngine) window.soundEngine.playClick();
             } else {
-                macroGame.lives--;
+                if (macroGame.lives > 0) macroGame.lives--; // Guard
                 if (window.soundEngine) window.soundEngine.playError();
             }
             updateMacroStats();
@@ -1813,7 +1822,7 @@ function spawnItem() {
                 macroGame.score++;
                 if (window.soundEngine) window.soundEngine.playClick();
             } else {
-                macroGame.lives--;
+                if (macroGame.lives > 0) macroGame.lives--; // Guard
                 if (window.soundEngine) window.soundEngine.playError();
             }
             updateMacroStats();
@@ -1920,11 +1929,11 @@ function initZenGame() {
         playtimeCounter: null
     };
 
-    // Initialize narrow path
+    // Initialize wider path
     for (let i = 0; i < 20; i++) {
         zenGame.path.push({
             x: canvas.width / 2,
-            width: 80 // Hard mode starts narrow!
+            width: 120 // BUFF: Used to be 80
         });
     }
 
@@ -1986,8 +1995,10 @@ function zenLoop() {
 
     // Move path down (scroll effect)
     const lastNode = zenGame.path[zenGame.path.length - 1];
-    const drift = Math.sin(zenGame.distance * 0.5) * 5;
-    const newWidth = Math.max(40, 80 - (zenGame.distance / 10)); // Gets narrower!
+    // NERF: Less drift swing (was *5)
+    const drift = Math.sin(zenGame.distance * 0.5) * 3;
+    // NERF: Slower narrowing (was /10, min 40 -> now /25, min 50)
+    const newWidth = Math.max(50, 120 - (zenGame.distance / 25));
 
     zenGame.path.shift();
     zenGame.path.push({
