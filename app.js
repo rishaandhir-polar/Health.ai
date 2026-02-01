@@ -2067,8 +2067,8 @@ const ViewStepTracker = () => {
             </div>
 
             <p style="font-size:12px; color:var(--text-muted); text-align:center; margin-top:20px; line-height:1.4;">
-                <i class="fa-solid fa-circle-info"></i> <strong>Background Tracking Active:</strong><br>
-                For best results, keep this browser tab <b>open</b> (you can minimize it or switch to other apps). If you close the tab, tracking will stop.
+                <i class="fa-solid fa-circle-info"></i> <strong>Tracking Active:</strong><br>
+                Steps are counted while the app is open and visible. Keep the app on your screen for best results.
             </p>
 
             <button class="btn" id="btn-home" style="margin-top:20px;">Back to Journal</button>
