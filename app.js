@@ -1717,6 +1717,8 @@ function updateMacroStats() {
 
 function startPlaytimeCounter() {
     if (macroGame.playtimeCounter) clearInterval(macroGame.playtimeCounter);
+    if (!macroGame.active) return; // Prevent stacking
+
     macroGame.playtimeCounter = setInterval(() => {
         if (!macroGame.active) {
             clearInterval(macroGame.playtimeCounter);
@@ -1728,7 +1730,6 @@ function startPlaytimeCounter() {
 
         if (state.gamePlaytime.secondsLeft <= 0) {
             endMacroGame("Time's Up!");
-            safeSave('health_playtime', state.gamePlaytime);
         }
     }, 1000);
 }
@@ -1769,7 +1770,7 @@ function spawnItem() {
             macroGame.lives--;
             updateMacroStats();
             clearInterval(fallInterval);
-            item.remove();
+            cleanup();
             if (macroGame.lives <= 0) endMacroGame("Game Over!");
         }
     }, 20);
@@ -1805,8 +1806,7 @@ function spawnItem() {
             }
             updateMacroStats();
             clearInterval(fallInterval);
-            item.remove();
-            isDragging = false;
+            cleanup();
             if (macroGame.lives <= 0) endMacroGame("Game Over!");
         } else if (relativeX > containerRect.width - 150) { // Right column (Treat)
             if (!isHealthy) {
@@ -1818,18 +1818,29 @@ function spawnItem() {
             }
             updateMacroStats();
             clearInterval(fallInterval);
-            item.remove();
-            isDragging = false;
+            cleanup();
             if (macroGame.lives <= 0) endMacroGame("Game Over!");
         }
+    };
+
+    const onEnd = () => {
+        isDragging = false;
+    };
+
+    const cleanup = () => {
+        window.removeEventListener('mousemove', onMove);
+        window.removeEventListener('touchmove', onMove);
+        window.removeEventListener('mouseup', onEnd);
+        window.removeEventListener('touchend', onEnd);
+        item.remove();
     };
 
     item.addEventListener('mousedown', onStart);
     item.addEventListener('touchstart', onStart, { passive: true });
     window.addEventListener('mousemove', onMove);
     window.addEventListener('touchmove', onMove, { passive: true });
-    window.addEventListener('mouseup', () => isDragging = false);
-    window.addEventListener('touchend', () => isDragging = false);
+    window.addEventListener('mouseup', onEnd);
+    window.addEventListener('touchend', onEnd);
 }
 
 function endMacroGame(reason) {
@@ -1837,13 +1848,27 @@ function endMacroGame(reason) {
     clearInterval(macroGame.interval);
     clearInterval(macroGame.playtimeCounter);
 
+    // Clear all falling items and their listeners
+    const container = document.getElementById('macro-game-container');
+    if (container) {
+        const items = container.querySelectorAll('.falling-item');
+        items.forEach(item => {
+            // Clone removal to ensure listeners are gone
+            const newEl = item.cloneNode(true);
+            item.parentNode.replaceChild(newEl, item);
+            newEl.remove();
+        });
+    }
+
     // Check high score
     if (macroGame.score > state.highScores.macroSorter) {
         state.highScores.macroSorter = macroGame.score;
         safeSave('health_high_scores', state.highScores);
     }
 
-    const container = document.getElementById('macro-game-container');
+    // Save playtime
+    safeSave('health_playtime', state.gamePlaytime);
+
     if (container) {
         container.innerHTML += `
             <div class="game-overlay">
@@ -1915,6 +1940,8 @@ function initZenGame() {
         zenGame.orb.y = clientY - rect.top;
     };
 
+    // Store listeners for cleanup
+    zenGame.moveOrb = moveOrb;
     canvas.addEventListener('mousemove', moveOrb);
     canvas.addEventListener('touchmove', moveOrb, { passive: true });
 
@@ -1922,6 +1949,9 @@ function initZenGame() {
 }
 
 function startZenPlaytimeCounter() {
+    if (zenGame.playtimeCounter) clearInterval(zenGame.playtimeCounter);
+    if (!zenGame.active) return; // Prevent stacking
+
     zenGame.playtimeCounter = setInterval(() => {
         if (!zenGame.active) {
             clearInterval(zenGame.playtimeCounter);
@@ -1933,7 +1963,6 @@ function startZenPlaytimeCounter() {
 
         if (state.gamePlaytime.secondsLeft <= 0) {
             endZenGame("Time's Up!");
-            safeSave('health_playtime', state.gamePlaytime);
         }
     }, 1000);
 }
@@ -2026,11 +2055,21 @@ function endZenGame(reason) {
     cancelAnimationFrame(zenGame.animationFrame);
     clearInterval(zenGame.playtimeCounter);
 
+    // Cleanup event listeners
+    const canvas = document.getElementById('zen-canvas');
+    if (canvas && zenGame.moveOrb) {
+        canvas.removeEventListener('mousemove', zenGame.moveOrb);
+        canvas.removeEventListener('touchmove', zenGame.moveOrb);
+    }
+
     const dist = Math.floor(zenGame.distance);
     if (dist > state.highScores.zenFlow) {
         state.highScores.zenFlow = dist;
         safeSave('health_high_scores', state.highScores);
     }
+
+    // Save playtime
+    safeSave('health_playtime', state.gamePlaytime);
 
     const container = document.getElementById('zen-game-container');
     if (container) {
@@ -2415,7 +2454,18 @@ function init() {
         if (e.target.id === 'btn-history') render('history');
         if (e.target.id === 'btn-monthly') render('monthly'); // NEW
         if (e.target.id === 'btn-quests') render('quests'); // NEW
-        if (e.target.id === 'btn-arcade') render('arcade'); // NEW
+        if (e.target.id === 'btn-arcade') {
+            // Save playtime if exiting from a game
+            if (macroGame && macroGame.active) {
+                macroGame.active = false;
+                safeSave('health_playtime', state.gamePlaytime);
+            }
+            if (zenGame && zenGame.active) {
+                zenGame.active = false;
+                safeSave('health_playtime', state.gamePlaytime);
+            }
+            render('arcade');
+        }
         if (e.target.id === 'btn-steps') render('steps'); // NEW
 
         if (e.target.closest('#launch-macro-sorter')) {
