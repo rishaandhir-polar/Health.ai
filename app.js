@@ -2102,9 +2102,7 @@ function startSilentAudio() {
     }
 }
 
-function initStepTracking() {
-    if (isTrackingSteps) return;
-
+function initStepTracking(isGlobalInit = false) {
     const requestPermission = async () => {
         if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
             try {
@@ -2118,7 +2116,6 @@ function initStepTracking() {
                 console.error("Step permission error:", err);
             }
         } else {
-            // Non-iOS or older browser
             startMotionListener();
         }
     };
@@ -2126,13 +2123,12 @@ function initStepTracking() {
     const startMotionListener = () => {
         if (isTrackingSteps) return;
         isTrackingSteps = true;
-        startSilentAudio(); // Keep tab alive
+        startSilentAudio();
 
         window.addEventListener('devicemotion', (event) => {
             const accel = event.accelerationIncludingGravity;
             if (!accel) return;
 
-            // Simple Magnitude Calculation
             const magnitude = Math.sqrt(
                 accel.x * accel.x +
                 accel.y * accel.y +
@@ -2156,27 +2152,38 @@ function initStepTracking() {
             setTimeout(() => display.classList.remove('step-bump'), 100);
         }
 
-        // Save occasionally
         if (state.steps.count % 5 === 0) {
             safeSave('health_steps', state.steps);
         }
     }
 
-    // Show permission button if iOS
-    if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-        const banner = document.getElementById('step-permission-banner');
-        if (banner) banner.style.display = 'block';
+    // UI BINDING: Run this every time the view is rendered
+    if (!isGlobalInit) {
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+            const banner = document.getElementById('step-permission-banner');
+            const grantBtn = document.getElementById('btn-grant-motion');
 
-        const grantBtn = document.getElementById('btn-grant-motion');
-        if (grantBtn) {
-            grantBtn.onclick = () => {
-                requestPermission();
-                banner.style.display = 'none';
-                if (silentAudio) silentAudio.play(); // Unlock audio context
-            };
+            if (isTrackingSteps) {
+                if (banner) banner.style.display = 'none';
+            } else if (banner) {
+                banner.style.display = 'block';
+            }
+
+            if (grantBtn) {
+                grantBtn.onclick = () => {
+                    requestPermission();
+                    if (banner) banner.style.display = 'none';
+                    if (silentAudio) silentAudio.play();
+                };
+            }
+        } else {
+            startMotionListener();
         }
     } else {
-        startMotionListener();
+        // GLOBAL INIT: Only start if permission not required
+        if (!(typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function')) {
+            startMotionListener();
+        }
     }
 }
 
@@ -2204,6 +2211,7 @@ function render(viewName, data = null) {
     else if (viewName === 'zenFlow') app.innerHTML = ViewZenFlow(); // NEW
     else if (viewName === 'steps') {
         app.innerHTML = ViewStepTracker();
+        initStepTracking(); // HOOK UP BUTTONS
     }
 }
 
@@ -2293,7 +2301,7 @@ function init() {
 
     applyTheme(state.theme);
     checkAchievements();
-    initStepTracking(); // START TRACKING GLOBALLY
+    initStepTracking(true); // START TRACKING GLOBALLY (if possible)
 
     // Start background music on first click
     document.addEventListener('click', () => {
