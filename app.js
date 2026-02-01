@@ -383,7 +383,9 @@ const state = {
             knowledge_seeker: { completed: false, progress: 0, xpAwarded: false, lastCountedDates: [] }
         },
         totalBonusXP: 0
-    })
+    }),
+    gamePlaytime: safeJSON('health_playtime', { date: getCurrentDate(), secondsLeft: 3600 }),
+    highScores: safeJSON('health_high_scores', { macroSorter: 0, zenFlow: 0 })
 };
 
 // MIGRATION: Add lastCountedDates to old quest data
@@ -1189,6 +1191,7 @@ const ViewEntry = () => {
             <button class="btn" id="btn-history" style="flex:1; background-color:var(--bg-input); color:var(--text-main);">View History</button>
             <button class="btn" id="btn-monthly" style="flex:1; background-color:var(--bg-input); color:var(--text-main);">📊 Monthly</button>
             <button class="btn" id="btn-quests" style="flex:1; background-color:var(--bg-input); color:var(--text-main);">🏆 Quests</button>
+            <button class="btn" id="btn-arcade" style="flex:1; background-color:var(--bg-input); color:var(--text-main);">🕹️ Arcade</button>
         </div>
     </div>
     `;
@@ -1575,7 +1578,471 @@ const ViewWeeklyQuests = () => {
 };
 
 
+const ViewArcade = () => {
+    checkPlaytimeReset();
+    const time = formatSeconds(state.gamePlaytime.secondsLeft);
+    const isLocked = state.gamePlaytime.secondsLeft <= 0;
+
+    return `
+        <div class="screen active">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h2>Health AI Arcade</h2>
+                <button id="btn-home" style="background:none; border:none; font-size:24px; color:var(--text-muted); cursor:pointer;">&times;</button>
+            </div>
+
+            <div class="playtime-banner">
+                <p style="margin:0; font-size:12px; color:var(--text-muted);">DAILY PLAYTIME REMAINING</p>
+                <div class="playtime-timer">${time}</div>
+                ${isLocked ? '<p style="margin:8px 0 0 0; color:var(--danger); font-weight:bold;">Time is up! Come back tomorrow.</p>' : ''}
+            </div>
+
+            <div class="arcade-grid">
+                <div class="game-card ${isLocked ? 'locked' : ''}" id="launch-macro-sorter">
+                    <div class="game-icon"><i class="fa-solid fa-basket-shopping"></i></div>
+                    <div style="flex:1;">
+                        <h3 style="margin:0;">Macro Sorter</h3>
+                        <p style="margin:4px 0; font-size:12px; color:var(--text-muted);">Swipe items to Fuel or Treat!</p>
+                        <div style="font-size:11px; font-weight:bold; color:var(--accent);">High Score: ${state.highScores.macroSorter}</div>
+                    </div>
+                </div>
+
+                <div class="game-card ${isLocked ? 'locked' : ''}" id="launch-zen-flow">
+                    <div class="game-icon"><i class="fa-solid fa-wave-square"></i></div>
+                    <div style="flex:1;">
+                        <h3 style="margin:0;">Zen Flow (Hard)</h3>
+                        <p style="margin:4px 0; font-size:12px; color:var(--text-muted);">Navigate the narrow path. Don't touch!</p>
+                        <div style="font-size:11px; font-weight:bold; color:var(--accent);">Best Distance: ${state.highScores.zenFlow}m</div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn" id="btn-home" style="margin-top:24px; background:var(--bg-input); color:var(--text-main);">Back to Journal</button>
+        </div>
+    `;
+};
+
+const ViewMacroSorter = () => `
+    <div class="screen active">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h3>Macro Sorter</h3>
+            <div id="game-timer" class="playtime-timer" style="font-size:14px;">${formatSeconds(state.gamePlaytime.secondsLeft)}</div>
+        </div>
+        <div class="game-container" id="macro-game-container">
+            <div id="score-display" style="position:absolute; top:10px; left:10px; font-weight:bold; font-size:20px; color:var(--accent); z-index:20;">0</div>
+            <div id="lives-display" style="position:absolute; top:10px; right:10px; font-weight:bold; font-size:20px; color:var(--danger); z-index:20;">❤️❤️❤️</div>
+            <div class="bucket-area">
+                <div class="bucket fuel">FUEL (HEALTHY)</div>
+                <div class="bucket treat">TREAT (UNHEALTHY)</div>
+            </div>
+            <div id="game-start-overlay" class="game-overlay">
+                <h2>Ready?</h2>
+                <p>Sort healthy items to Fuel, unhealthy to Treat.</p>
+                <button class="btn" id="start-macro-game">Start Game</button>
+            </div>
+        </div>
+        <button class="btn" id="btn-arcade" style="background:var(--bg-input); color:var(--text-main);">Exit Game</button>
+    </div>
+`;
+
+const ViewZenFlow = () => `
+    <div class="screen active">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h3>Zen Flow (Hard)</h3>
+            <div id="game-timer" class="playtime-timer" style="font-size:14px;">${formatSeconds(state.gamePlaytime.secondsLeft)}</div>
+        </div>
+        <div class="game-container" id="zen-game-container" style="background:#000;">
+            <canvas id="zen-canvas"></canvas>
+            <div id="distance-display" style="position:absolute; top:10px; left:10px; font-weight:bold; font-size:20px; color:#00f3ff; z-index:20;">0m</div>
+            <div id="game-start-overlay-zen" class="game-overlay">
+                <i class="fa-solid fa-hand-pointer" style="font-size:48px; margin-bottom:16px;"></i>
+                <h2>Zen Flow</h2>
+                <p>Narrow path. Steady focus. Touching walls = Lose.</p>
+                <button class="btn" id="start-zen-game">Enter Flow State</button>
+            </div>
+        </div>
+        <button class="btn" id="btn-arcade" style="background:var(--bg-input); color:var(--text-main);">Exit Game</button>
+    </div>
+`;
+
+function checkPlaytimeReset() {
+    const today = getCurrentDate();
+    if (state.gamePlaytime.date !== today) {
+        state.gamePlaytime = { date: today, secondsLeft: 3600 };
+        safeSave('health_playtime', state.gamePlaytime);
+    }
+}
+
+function formatSeconds(s) {
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+// --- MACRO SORTER GAME LOGIC ---
+const HEALTHY_ITEMS = ['🍎', '🥦', '🍌', '🥗', '💧', '🥑', '🍗', '🥚'];
+const UNHEALTHY_ITEMS = ['🍔', '🍕', '🥤', '🍩', '🍟', '🍦', '🍰', '🍫'];
+
+let macroGame = {
+    active: false,
+    score: 0,
+    lives: 3,
+    interval: null,
+    playtimeCounter: null
+};
+
+function initMacroGame() {
+    const overlay = document.getElementById('game-start-overlay');
+    if (overlay) overlay.style.display = 'none';
+
+    macroGame = { active: true, score: 0, lives: 3, interval: null, playtimeCounter: null };
+    updateMacroStats();
+
+    startPlaytimeCounter();
+    spawnItem();
+    macroGame.interval = setInterval(spawnItem, 2000);
+}
+
+function updateMacroStats() {
+    const scoreEl = document.getElementById('score-display');
+    const livesEl = document.getElementById('lives-display');
+    if (scoreEl) scoreEl.innerText = macroGame.score;
+    if (livesEl) livesEl.innerText = '❤️'.repeat(macroGame.lives);
+}
+
+function startPlaytimeCounter() {
+    if (macroGame.playtimeCounter) clearInterval(macroGame.playtimeCounter);
+    macroGame.playtimeCounter = setInterval(() => {
+        if (!macroGame.active) {
+            clearInterval(macroGame.playtimeCounter);
+            return;
+        }
+        state.gamePlaytime.secondsLeft--;
+        const timerEls = document.querySelectorAll('.playtime-timer');
+        timerEls.forEach(el => el.innerText = formatSeconds(state.gamePlaytime.secondsLeft));
+
+        if (state.gamePlaytime.secondsLeft <= 0) {
+            endMacroGame("Time's Up!");
+            safeSave('health_playtime', state.gamePlaytime);
+        }
+    }, 1000);
+}
+
+function spawnItem() {
+    if (!macroGame.active) return;
+
+    const container = document.getElementById('macro-game-container');
+    if (!container) return;
+
+    const isHealthy = Math.random() > 0.5;
+    const itemChar = isHealthy
+        ? HEALTHY_ITEMS[Math.floor(Math.random() * HEALTHY_ITEMS.length)]
+        : UNHEALTHY_ITEMS[Math.floor(Math.random() * UNHEALTHY_ITEMS.length)];
+
+    const item = document.createElement('div');
+    item.className = 'falling-item';
+    item.innerText = itemChar;
+    item.style.left = (Math.random() * 80 + 10) + '%';
+    item.style.top = '-50px';
+    container.appendChild(item);
+
+    let top = -50;
+    const speed = 2 + (macroGame.score / 10);
+
+    const fallInterval = setInterval(() => {
+        if (!macroGame.active) {
+            clearInterval(fallInterval);
+            item.remove();
+            return;
+        }
+
+        top += speed;
+        item.style.top = top + 'px';
+
+        if (top > 320) {
+            // MISSED!
+            macroGame.lives--;
+            updateMacroStats();
+            clearInterval(fallInterval);
+            item.remove();
+            if (macroGame.lives <= 0) endMacroGame("Game Over!");
+        }
+    }, 20);
+
+    // Drag logic
+    let isDragging = false;
+    let startX = 0;
+
+    const onStart = (e) => {
+        isDragging = true;
+        startX = (e.touches ? e.touches[0].clientX : e.clientX);
+        item.style.cursor = 'grabbing';
+    };
+
+    const onMove = (e) => {
+        if (!isDragging) return;
+        const currentX = (e.touches ? e.touches[0].clientX : e.clientX);
+        const diff = currentX - startX;
+        item.style.transform = `translateX(${diff}px)`;
+
+        // Check columns
+        const rect = item.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const relativeX = rect.left - containerRect.left;
+
+        if (relativeX < 100) { // Left column (Fuel)
+            if (isHealthy) {
+                macroGame.score++;
+                if (window.soundEngine) window.soundEngine.playClick();
+            } else {
+                macroGame.lives--;
+                if (window.soundEngine) window.soundEngine.playError();
+            }
+            updateMacroStats();
+            clearInterval(fallInterval);
+            item.remove();
+            isDragging = false;
+            if (macroGame.lives <= 0) endMacroGame("Game Over!");
+        } else if (relativeX > containerRect.width - 150) { // Right column (Treat)
+            if (!isHealthy) {
+                macroGame.score++;
+                if (window.soundEngine) window.soundEngine.playClick();
+            } else {
+                macroGame.lives--;
+                if (window.soundEngine) window.soundEngine.playError();
+            }
+            updateMacroStats();
+            clearInterval(fallInterval);
+            item.remove();
+            isDragging = false;
+            if (macroGame.lives <= 0) endMacroGame("Game Over!");
+        }
+    };
+
+    item.addEventListener('mousedown', onStart);
+    item.addEventListener('touchstart', onStart, { passive: true });
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('touchmove', onMove, { passive: true });
+    window.addEventListener('mouseup', () => isDragging = false);
+    window.addEventListener('touchend', () => isDragging = false);
+}
+
+function endMacroGame(reason) {
+    macroGame.active = false;
+    clearInterval(macroGame.interval);
+    clearInterval(macroGame.playtimeCounter);
+
+    // Check high score
+    if (macroGame.score > state.highScores.macroSorter) {
+        state.highScores.macroSorter = macroGame.score;
+        safeSave('health_high_scores', state.highScores);
+    }
+
+    const container = document.getElementById('macro-game-container');
+    if (container) {
+        container.innerHTML += `
+            <div class="game-overlay">
+                <h2>${reason}</h2>
+                <div class="game-stat">Your Score</div>
+                <div class="game-value">${macroGame.score}</div>
+                <div class="xp-award">+${Math.floor(macroGame.score / 2)} Brain XP</div>
+                <button class="btn" id="btn-arcade" style="margin-top:20px;">Return to Arcade</button>
+            </div>
+        `;
+    }
+
+    // Award small amount of XP to Wisdom/Knowledge
+    if (macroGame.score > 5) {
+        // We don't have a direct "add XP" function that isn't tied to Daily Analysis,
+        // but it will show up in their mental stats if we add a "game session" to history?
+        // For now, it's just for fun and the high score.
+    }
+}
+
+// --- ZEN FLOW GAME LOGIC ---
+let zenGame = {
+    active: false,
+    distance: 0,
+    path: [],
+    orb: { x: 0, y: 0 },
+    animationFrame: null,
+    playtimeCounter: null
+};
+
+function initZenGame() {
+    const overlay = document.getElementById('game-start-overlay-zen');
+    if (overlay) overlay.style.display = 'none';
+
+    const canvas = document.getElementById('zen-canvas');
+    if (!canvas) return;
+
+    // Responsive canvas
+    const container = document.getElementById('zen-game-container');
+    canvas.width = container.clientWidth;
+    canvas.height = container.clientHeight;
+
+    zenGame = {
+        active: true,
+        distance: 0,
+        path: [],
+        orb: { x: canvas.width / 2, y: canvas.height / 2 },
+        animationFrame: null,
+        playtimeCounter: null
+    };
+
+    // Initialize narrow path
+    for (let i = 0; i < 20; i++) {
+        zenGame.path.push({
+            x: canvas.width / 2,
+            width: 80 // Hard mode starts narrow!
+        });
+    }
+
+    startZenPlaytimeCounter();
+
+    // Control logic
+    const moveOrb = (e) => {
+        if (!zenGame.active) return;
+        const rect = canvas.getBoundingClientRect();
+        const clientX = (e.touches ? e.touches[0].clientX : e.clientX);
+        const clientY = (e.touches ? e.touches[0].clientY : e.clientY);
+        zenGame.orb.x = clientX - rect.left;
+        zenGame.orb.y = clientY - rect.top;
+    };
+
+    canvas.addEventListener('mousemove', moveOrb);
+    canvas.addEventListener('touchmove', moveOrb, { passive: true });
+
+    zenLoop();
+}
+
+function startZenPlaytimeCounter() {
+    zenGame.playtimeCounter = setInterval(() => {
+        if (!zenGame.active) {
+            clearInterval(zenGame.playtimeCounter);
+            return;
+        }
+        state.gamePlaytime.secondsLeft--;
+        const timerEls = document.querySelectorAll('.playtime-timer');
+        timerEls.forEach(el => el.innerText = formatSeconds(state.gamePlaytime.secondsLeft));
+
+        if (state.gamePlaytime.secondsLeft <= 0) {
+            endZenGame("Time's Up!");
+            safeSave('health_playtime', state.gamePlaytime);
+        }
+    }, 1000);
+}
+
+function zenLoop() {
+    if (!zenGame.active) return;
+
+    const canvas = document.getElementById('zen-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
+
+    // Clear
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
+
+    // Update Path
+    zenGame.distance += 0.1;
+    document.getElementById('distance-display').innerText = Math.floor(zenGame.distance) + 'm';
+
+    // Move path down (scroll effect)
+    const lastNode = zenGame.path[zenGame.path.length - 1];
+    const drift = Math.sin(zenGame.distance * 0.5) * 5;
+    const newWidth = Math.max(40, 80 - (zenGame.distance / 10)); // Gets narrower!
+
+    zenGame.path.shift();
+    zenGame.path.push({
+        x: lastNode.x + drift + (Math.random() - 0.5) * 10,
+        width: newWidth
+    });
+
+    // Constrain path within walls
+    const newNode = zenGame.path[zenGame.path.length - 1];
+    if (newNode.x < newNode.width / 2) newNode.x = newNode.width / 2;
+    if (newNode.x > w - newNode.width / 2) newNode.x = w - newNode.width / 2;
+
+    // Draw Path
+    ctx.beginPath();
+    ctx.strokeStyle = '#00f3ff';
+    ctx.lineWidth = 2;
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#00f3ff';
+
+    const stepY = h / zenGame.path.length;
+
+    // Left Wall
+    ctx.moveTo(zenGame.path[0].x - zenGame.path[0].width / 2, 0);
+    for (let i = 1; i < zenGame.path.length; i++) {
+        ctx.lineTo(zenGame.path[i].x - zenGame.path[i].width / 2, i * stepY);
+    }
+    ctx.stroke();
+
+    // Right Wall
+    ctx.beginPath();
+    ctx.moveTo(zenGame.path[0].x + zenGame.path[0].width / 2, 0);
+    for (let i = 1; i < zenGame.path.length; i++) {
+        ctx.lineTo(zenGame.path[i].x + zenGame.path[i].width / 2, i * stepY);
+    }
+    ctx.stroke();
+
+    // Check Collision
+    // Finding the path node at the orb's Y position
+    const orbIndex = Math.floor((zenGame.orb.y / h) * zenGame.path.length);
+    const currentNode = zenGame.path[Math.min(zenGame.path.length - 1, Math.max(0, orbIndex))];
+
+    if (currentNode) {
+        const leftWall = currentNode.x - currentNode.width / 2;
+        const rightWall = currentNode.x + currentNode.width / 2;
+
+        if (zenGame.orb.x < leftWall || zenGame.orb.x > rightWall) {
+            endZenGame("Flow Broken!");
+            return;
+        }
+    }
+
+    // Draw Orb
+    ctx.beginPath();
+    ctx.arc(zenGame.orb.x, zenGame.orb.y, 6, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.shadowBlur = 20;
+    ctx.shadowColor = '#fff';
+    ctx.fill();
+
+    zenGame.animationFrame = requestAnimationFrame(zenLoop);
+}
+
+function endZenGame(reason) {
+    zenGame.active = false;
+    cancelAnimationFrame(zenGame.animationFrame);
+    clearInterval(zenGame.playtimeCounter);
+
+    const dist = Math.floor(zenGame.distance);
+    if (dist > state.highScores.zenFlow) {
+        state.highScores.zenFlow = dist;
+        safeSave('health_high_scores', state.highScores);
+    }
+
+    const container = document.getElementById('zen-game-container');
+    if (container) {
+        container.innerHTML += `
+            <div class="game-overlay">
+                <h2>${reason}</h2>
+                <div class="game-stat">Distance Reached</div>
+                <div class="game-value">${dist}m</div>
+                <div class="xp-award">+${Math.floor(dist / 5)} Zen XP</div>
+                <button class="btn" id="btn-arcade" style="margin-top:20px;">Return to Arcade</button>
+            </div>
+        `;
+    }
+}
+
 function applyTheme(themeName) {
+
+
     document.body.className = themeName;
     localStorage.setItem('health_theme', themeName);
     state.theme = themeName;
@@ -1591,6 +2058,9 @@ function render(viewName, data = null) {
     else if (viewName === 'meditation') app.innerHTML = ViewMeditation();
     else if (viewName === 'monthly') app.innerHTML = ViewMonthlySummary(); // NEW
     else if (viewName === 'quests') app.innerHTML = ViewWeeklyQuests(); // NEW
+    else if (viewName === 'arcade') app.innerHTML = ViewArcade(); // NEW
+    else if (viewName === 'macroSorter') app.innerHTML = ViewMacroSorter(); // NEW
+    else if (viewName === 'zenFlow') app.innerHTML = ViewZenFlow(); // NEW
 }
 
 function startBreathingCycle() {
@@ -1792,6 +2262,17 @@ function init() {
         if (e.target.id === 'btn-history') render('history');
         if (e.target.id === 'btn-monthly') render('monthly'); // NEW
         if (e.target.id === 'btn-quests') render('quests'); // NEW
+        if (e.target.id === 'btn-arcade') render('arcade'); // NEW
+
+        if (e.target.closest('#launch-macro-sorter')) {
+            if (state.gamePlaytime.secondsLeft > 0) render('macroSorter');
+        }
+        if (e.target.closest('#launch-zen-flow')) {
+            if (state.gamePlaytime.secondsLeft > 0) render('zenFlow');
+        }
+
+        if (e.target.id === 'start-macro-game') initMacroGame();
+        if (e.target.id === 'start-zen-game') initZenGame();
         if (e.target.closest('#btn-reset-streak')) {
             if (confirm("Are you sure you want to reset your streak? (XP will remain safe)")) {
                 state.streakResetDate = new Date();
