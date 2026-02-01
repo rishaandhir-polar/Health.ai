@@ -2063,8 +2063,13 @@ const ViewStepTracker = () => {
 
             <div id="step-permission-banner" class="playtime-banner" style="display:none; background:rgba(59, 130, 246, 0.1); border-color:var(--accent);">
                 <p style="margin:0 0 10px 0; font-size:14px;">Motion sensors needed for tracking.</p>
-                <button class="btn" id="btn-grant-motion" style="padding:8px 16px; font-size:14px;">Enable Sensors</button>
+                <button class="btn" id="btn-grant-motion" style="padding:8px 16px; font-size:14px;">Enable Tracking</button>
             </div>
+
+            <p style="font-size:12px; color:var(--text-muted); text-align:center; margin-top:20px; line-height:1.4;">
+                <i class="fa-solid fa-circle-info"></i> <strong>Background Tracking Active:</strong><br>
+                For best results, keep this browser tab <b>open</b> (you can minimize it or switch to other apps). If you close the tab, tracking will stop.
+            </p>
 
             <button class="btn" id="btn-home" style="margin-top:20px;">Back to Journal</button>
         </div>
@@ -2083,6 +2088,19 @@ let isTrackingSteps = false;
 let stepThreshold = 12.0; // Simple threshold
 let stepCooldown = 300; // ms between steps
 let lastStepTime = 0;
+let silentAudio = null;
+
+function startSilentAudio() {
+    if (silentAudio) return;
+    try {
+        // Tiny silent WAV data URI to keep the JS process alive in background
+        silentAudio = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
+        silentAudio.loop = true;
+        silentAudio.play().catch(e => console.warn("Background audio suppressed until interaction"));
+    } catch (e) {
+        console.error("Silent audio init error:", e);
+    }
+}
 
 function initStepTracking() {
     if (isTrackingSteps) return;
@@ -2108,6 +2126,7 @@ function initStepTracking() {
     const startMotionListener = () => {
         if (isTrackingSteps) return;
         isTrackingSteps = true;
+        startSilentAudio(); // Keep tab alive
 
         window.addEventListener('devicemotion', (event) => {
             const accel = event.accelerationIncludingGravity;
@@ -2153,6 +2172,7 @@ function initStepTracking() {
             grantBtn.onclick = () => {
                 requestPermission();
                 banner.style.display = 'none';
+                if (silentAudio) silentAudio.play(); // Unlock audio context
             };
         }
     } else {
